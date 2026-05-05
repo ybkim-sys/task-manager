@@ -177,8 +177,13 @@ export default function App() {
   const archiveTask = id => { upd(id,{status:"done",archived:true,completedAt:new Date().toISOString().slice(0,10)}); setSel(null); };
   const addTask = () => {
     if (!newT.title.trim()) return;
-    const t={...newT,id:nid++,guide:"",checklist:[],archived:false};
-    setTasks(p=>[...p,t]); setOrder(p=>[...p,t.id]);
+    api.addTask({...newT, guide:"", checklist:"[]", archived:0})
+      .then(res => {
+        if (res.id) {
+          const t={...newT,id:res.id,guide:"",checklist:[],archived:false};
+          setTasks(p=>[...p,t]); setOrder(p=>[...p,res.id]);
+        }
+      });
     setNewT({cat:cats[0],title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""});
     setModal(null);
   };
