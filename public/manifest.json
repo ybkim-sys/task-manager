@@ -1,0 +1,16 @@
+{
+  "name": "업무 관리 - GC 인사",
+  "short_name": "업무관리",
+  "description": "김영빈 차장님의 업무 관리 앱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0066cc",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

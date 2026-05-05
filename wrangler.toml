@@ -1,0 +1,8 @@
+name = "task-manager-worker"
+main = "worker/index.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "task-manager-db"
+database_id = "b550f032-a723-46ca-9ce6-49d95c98b065"

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 
 const STATUSES = [
   { id:"todo",    label:"할 일",       bg:"#f5f5f7", color:"#555",    border:"#d0d0d5" },
@@ -120,7 +120,12 @@ export default function App() {
   const [archSearch,  setAS]  = useState("");
   // ── add task form
   const [newT, setNewT] = useState({cat:INIT_CATS[0],title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""});
-
+// DB에서 데이터 불러오기
+  useEffect(()=>{
+    api.getTasks().then(data=>{ if(Array.isArray(data)) setTasks(data.map(t=>({...t, checklist:t.checklist?JSON.parse(t.checklist):[], archived:!!t.archived }))); });
+    api.getCategories().then(data=>{ if(Array.isArray(data)) setCats(data.map(c=>c.name)); });
+    api.getFiles().then(data=>{ if(Array.isArray(data)) setFiles(data); });
+  },[]);
   // drag refs
   const dragId   = useRef(null);
   const dragOver = useRef(null);
