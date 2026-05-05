@@ -97,6 +97,9 @@ function TaskCard({ t, isSel, onClick }) {
 
 export default function App() {
   const [mobile, setMobile] = useState(window.innerWidth < 768);
+  const [subtitle, setSubtitle] = useState("GC 인사쟁이 김영빈 차장님 화이팅입니다 💪");
+  const [editingSubtitle, setEditingSubtitle] = useState(false);
+  const [subtitleDraft, setSubtitleDraft] = useState("");
   useEffect(()=>{
     const fn = () => setMobile(window.innerWidth < 768);
     window.addEventListener("resize", fn);
@@ -224,7 +227,19 @@ export default function App() {
       <div style={{background:"#fff",borderBottom:"0.5px solid #e0e0e0",padding:mobile?"8px 12px":"10px 16px",display:"flex",alignItems:"center",gap:8,flexShrink:0,flexWrap:"wrap"}}>
         <div style={{flex:1,minWidth:100}}>
           <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>업무 관리</span>
-          {!mobile&&<span style={{fontSize:11,color:"#7a7a7a",marginLeft:10}}>GC 인사쟁이 김영빈 차장님 화이팅입니다 💪</span>}
+          {!mobile&&(
+            editingSubtitle
+              ? <input autoFocus value={subtitleDraft}
+                  onChange={e=>setSubtitleDraft(e.target.value)}
+                  onBlur={()=>{ setSubtitle(subtitleDraft); setEditingSubtitle(false); }}
+                  onKeyDown={e=>{ if(e.key==="Enter"){ setSubtitle(subtitleDraft); setEditingSubtitle(false); } if(e.key==="Escape") setEditingSubtitle(false); }}
+                  style={{fontSize:11,color:"#1d1d1f",marginLeft:10,border:"0.5px solid #0066cc",borderRadius:6,padding:"2px 8px",outline:"none",width:280}}/>
+              : <span onClick={()=>{ setSubtitleDraft(subtitle); setEditingSubtitle(true); }}
+                  title="클릭하여 수정"
+                  style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>
+                  {subtitle} ✏️
+                </span>
+          )}
         </div>
         <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
           {urgCounts.overdue>0&&<span style={{fontSize:11,background:"#c0392b",color:"#fff",borderRadius:999,padding:"2px 7px",fontWeight:600}}>D+ {urgCounts.overdue}</span>}
