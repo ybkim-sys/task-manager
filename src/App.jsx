@@ -171,10 +171,30 @@ export default function App() {
     waiting: tasks.filter(t=>t.status==="waiting").length,
   }),[tasks]);
 
-  // ── task actions
-  const upd = (id,patch) => setTasks(p=>p.map(t=>t.id===id?{...t,...patch}:t));
-  const del = id => { setTasks(p=>p.filter(t=>t.id!==id)); setOrder(p=>p.filter(x=>x!==id)); if(sel===id)setSel(null); };
-  const archiveTask = id => { upd(id,{status:"done",archived:true,completedAt:new Date().toISOString().slice(0,10)}); setSel(null); };
+ // ── task actions
+  const upd = (id, patch) => {
+    setTasks(p => p.map(t => t.id===id ? {...t,...patch} : t));
+    const task = tasks.find(t=>t.id===id);
+    if (task) {
+      const updated = {...task,...patch};
+      api.updateTask(id, {
+        ...updated,
+        checklist: JSON.stringify(updated.checklist||[]),
+        archived: updated.archived?1:0,
+      });
+    }
+  };
+  const del = id => {
+    setTasks(p=>p.filter(t=>t.id!==id));
+    setOrder(p=>p.filter(x=>x!==id));
+    if(sel===id)setSel(null);
+    api.deleteTask(id);
+  };
+  const archiveTask = id => {
+    const completedAt = new Date().toISOString().slice(0,10);
+    upd(id,{status:"done",archived:true,completedAt});
+    setSel(null);
+  };
   const addTask = () => {
     if (!newT.title.trim()) return;
     api.addTask({...newT, guide:"", checklist:"[]", archived:0})
