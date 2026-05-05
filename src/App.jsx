@@ -1,5 +1,5 @@
+import { api } from "./api.js";
 import { useState, useMemo, useRef, useEffect } from "react";
-
 const STATUSES = [
   { id:"todo",    label:"할 일",       bg:"#f5f5f7", color:"#555",    border:"#d0d0d5" },
   { id:"doing",   label:"진행 중",     bg:"#e8f1fb", color:"#0050a0", border:"#b5d0f0" },
