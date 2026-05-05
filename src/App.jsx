@@ -342,6 +342,7 @@ export default function App() {
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {[
+                ["제목",    <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:13,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
                 ["카테고리",<select value={selTask.cat} onChange={e=>upd(selTask.id,{cat:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{cats.map(c=><option key={c}>{c}</option>)}</select>],
                 ["상태",    <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
                 ["기한",    <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
@@ -385,6 +386,7 @@ export default function App() {
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {[
+                ["제목",    <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:14,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
                 ["카테고리",<select value={selTask.cat} onChange={e=>upd(selTask.id,{cat:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{cats.map(c=><option key={c}>{c}</option>)}</select>],
                 ["상태",    <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
                 ["기한",    <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
