@@ -45,7 +45,7 @@ function DueBadge({ due, status }) {
   let color="#7a7a7a", bg="transparent", fw=400;
   if (d<0)       { color="#fff";    bg="#c0392b"; fw=600; }
   else if (d<=2) { color="#c0392b"; bg="#fdecea"; fw=600; }
-  else if (d<=3) { color="#bf5a00"; bg="#fff0e0"; fw=600; }
+  else if (d<=3) { color="#bf5a00"; bg:"#fff0e0"; fw=600; }
   else if (d<=7) { color="#bf5a00"; bg="#fff3e0"; fw=500; }
   const label = d<0?`D+${Math.abs(d)}`:d===0?"오늘":`D-${d}`;
   return (
@@ -74,7 +74,6 @@ function Pill({ label, active, onClick, accent }) {
   );
 }
 
-// 모바일 카드 컴포넌트
 function TaskCard({ t, isSel, onClick }) {
   const {bg, bl} = rowBg(t, isSel);
   return (
@@ -97,9 +96,41 @@ function TaskCard({ t, isSel, onClick }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
+  // ── 모든 useState/useEffect를 최상단에 ──
+  const [user,           setUser]           = useState(null);
+  const [authChecked,    setAuthChecked]    = useState(false);
+  const [mobile,         setMobile]         = useState(window.innerWidth < 768);
+  const [subtitle,       setSubtitle]       = useState("GC 인사쟁이 김영빈 차장님 화이팅입니다 💪");
+  const [editingSubtitle,setEditingSubtitle]= useState(false);
+  const [subtitleDraft,  setSubtitleDraft]  = useState("");
+  const [tasks,          setTasks]          = useState([]);
+  const [order,          setOrder]          = useState([]);
+  const [sel,            setSel]            = useState(null);
+  const [filterStatus,   setFS]             = useState("active");
+  const [filterCat,      setFC]             = useState("전체");
+  const [sortBy,         setSB]             = useState("urgency");
+  const [modal,          setModal]          = useState(null);
+  const [cats,           setCats]           = useState(INIT_CATS);
+  const [catEditIdx,     setCatEditIdx]     = useState(null);
+  const [catEditVal,     setCatEditVal]     = useState("");
+  const [newCatName,     setNewCatName]     = useState("");
+  const [files,          setFiles]          = useState([]);
+  const [fileSearch,     setFileSearch]     = useState("");
+  const [fileTag,        setFileTag]        = useState("전체");
+  const [addingFile,     setAddingFile]     = useState(false);
+  const [newFile,        setNewFile]        = useState({name:"",type:"url",url:"",memo:"",tag:"기타"});
+  const [fileEditId,     setFileEditId]     = useState(null);
+  const [fileEditVal,    setFileEditVal]    = useState(null);
+  const [cleanupDays,    setCD]             = useState(30);
+  const [archSearch,     setAS]             = useState("");
+  const [newT,           setNewT]           = useState({cat:INIT_CATS[0],title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""});
 
+  const dragId   = useRef(null);
+  const dragOver = useRef(null);
+  const cDragId  = useRef(null);
+  const cDragOver= useRef(null);
+
+  // 인증 확인
   useEffect(()=>{
     if (session.get()) {
       api.me().then(res => {
@@ -112,60 +143,38 @@ export default function App() {
     }
   },[]);
 
-  const handleLogout = async () => {
-    await api.logout();
-    session.clear();
-    setUser(null);
-  };
-
-const [mobile, setMobile] = useState(window.innerWidth < 768);
-  const [subtitle, setSubtitle] = useState("GC 인사쟁이 김영빈 차장님 화이팅입니다 💪");
-  const [editingSubtitle, setEditingSubtitle] = useState(false);
-  const [subtitleDraft, setSubtitleDraft] = useState("");
-
+  // 모바일 감지
   useEffect(()=>{
     const fn = () => setMobile(window.innerWidth < 768);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   },[]);
 
-  if (!authChecked) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif",color:"#7a7a7a"}}>로딩 중…</div>;
-  if (!user) return <Login onLogin={setUser}/>;
-
-  const [tasks,  setTasks]  = useState([]);
-  const [order,  setOrder]  = useState([]);
-  const [sel,    setSel]    = useState(null);
-  const [filterStatus, setFS] = useState("active");
-  const [filterCat,    setFC] = useState("전체");
-  const [sortBy,       setSB] = useState("urgency");
-  const [modal, setModal]   = useState(null);
-  const [cats,       setCats]       = useState(INIT_CATS);
-  const [catEditIdx, setCatEditIdx] = useState(null);
-  const [catEditVal, setCatEditVal] = useState("");
-  const [newCatName, setNewCatName] = useState("");
-  const [files,       setFiles]      = useState([]);
-  const [fileSearch,  setFileSearch] = useState("");
-  const [fileTag,     setFileTag]    = useState("전체");
-  const [addingFile,  setAddingFile] = useState(false);
-  const [newFile,     setNewFile]    = useState({name:"",type:"url",url:"",memo:"",tag:"기타"});
-  const [fileEditId,  setFileEditId] = useState(null);
-  const [fileEditVal, setFileEditVal]= useState(null);
-  const [cleanupDays, setCD]  = useState(30);
-  const [archSearch,  setAS]  = useState("");
-  const [newT, setNewT] = useState({cat:INIT_CATS[0],title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""});
-
-  const dragId   = useRef(null);
-  const dragOver = useRef(null);
-  const cDragId  = useRef(null);
-  const cDragOver= useRef(null);
-
+  // 데이터 로드 (로그인 후)
   useEffect(()=>{
+    if (!user) return;
     api.getTasks().then(data=>{ if(Array.isArray(data)){ setTasks(data.map(t=>({...t,checklist:t.checklist?JSON.parse(t.checklist):[],archived:!!t.archived}))); setOrder(data.map(t=>t.id)); }});
     api.getCategories().then(data=>{ if(Array.isArray(data)) setCats(data.map(c=>c.name)); });
     api.getFiles().then(data=>{ if(Array.isArray(data)) setFiles(data); });
-  },[]);
+  },[user]);
 
-  const filtered = useMemo(()=>{
+  // ── 로그인 체크 (모든 훅 이후에) ──
+  if (!authChecked) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif",color:"#7a7a7a"}}>
+      로딩 중…
+    </div>
+  );
+  if (!user) return <Login onLogin={setUser}/>;
+
+  // ── 로그아웃 ──
+  const handleLogout = async () => {
+    await api.logout();
+    session.clear();
+    setUser(null);
+  };
+
+  // ── derived ──
+  const filtered = (() => {
     let base = sortBy==="manual" ? order.map(id=>tasks.find(t=>t.id===id)).filter(Boolean) : [...tasks];
     if (filterStatus==="active") base=base.filter(x=>x.status!=="done");
     else if (filterStatus==="done") base=base.filter(x=>x.status==="done");
@@ -175,31 +184,31 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
     else if (sortBy==="stars") base=[...base].sort((a,b)=>b.stars-a.stars);
     else if (sortBy==="due")   base=[...base].sort((a,b)=>(a.due||"z").localeCompare(b.due||"z"));
     return base;
-  },[tasks,order,filterStatus,filterCat,sortBy]);
+  })();
 
   const selTask = sel ? tasks.find(t=>t.id===sel) : null;
 
-  const archives = useMemo(()=>{
+  const archives = (() => {
     const q=archSearch.toLowerCase();
     return tasks.filter(t=>t.archived).filter(t=>!q||t.title.includes(q)||(t.memo||"").includes(q)||(t.guide||"").includes(q)||t.cat.includes(q))
       .sort((a,b)=>(b.completedAt||"").localeCompare(a.completedAt||""));
-  },[tasks,archSearch]);
+  })();
 
-  const cleanupTargets = useMemo(()=>{
+  const cleanupTargets = (() => {
     const cut=new Date(); cut.setDate(cut.getDate()-cleanupDays);
     return tasks.filter(t=>t.status==="done"&&!t.archived&&t.due&&new Date(t.due)<=cut);
-  },[tasks,cleanupDays]);
+  })();
 
-  const shownFiles = useMemo(()=>files.filter(f=>{
+  const shownFiles = files.filter(f=>{
     const q=fileSearch.toLowerCase();
     return (!q||f.name.toLowerCase().includes(q)||(f.memo||"").toLowerCase().includes(q))&&(fileTag==="전체"||f.tag===fileTag);
-  }),[files,fileSearch,fileTag]);
+  });
 
-  const urgCounts = useMemo(()=>({
+  const urgCounts = {
     overdue: tasks.filter(t=>t.status!=="done"&&t.status!=="hold"&&daysDiff(t.due)<0).length,
     soon:    tasks.filter(t=>t.status!=="done"&&t.status!=="hold"&&(d=>d!==null&&d>=0&&d<=3)(daysDiff(t.due))).length,
     waiting: tasks.filter(t=>t.status==="waiting").length,
-  }),[tasks]);
+  };
 
   const upd = (id, patch) => {
     setTasks(p => p.map(t => t.id===id ? {...t,...patch} : t));
@@ -243,7 +252,6 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
 
   const saveNewFile=()=>{ if(!newFile.name.trim())return; api.addFile(newFile).then(res=>{ if(res.id) setFiles(p=>[...p,{...newFile,id:res.id,updatedAt:new Date().toISOString().slice(0,10)}]); }); setNewFile({name:"",type:"url",url:"",memo:"",tag:"기타"}); setAddingFile(false); };
   const saveFileEdit=()=>{ api.updateFile(fileEditId,fileEditVal).then(()=>{ setFiles(p=>p.map(f=>f.id===fileEditId?{...fileEditVal,updatedAt:new Date().toISOString().slice(0,10)}:f)); }); setFileEditId(null); setFileEditVal(null); };
-
   const closeModal=()=>{ setModal(null); setAddingFile(false); setFileEditId(null); setFileEditVal(null); setCatEditIdx(null); };
 
   return (
@@ -255,16 +263,12 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
           <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>업무 관리</span>
           {!mobile&&(
             editingSubtitle
-              ? <input autoFocus value={subtitleDraft}
-                  onChange={e=>setSubtitleDraft(e.target.value)}
+              ? <input autoFocus value={subtitleDraft} onChange={e=>setSubtitleDraft(e.target.value)}
                   onBlur={()=>{ setSubtitle(subtitleDraft); setEditingSubtitle(false); }}
-                  onKeyDown={e=>{ if(e.key==="Enter"){ setSubtitle(subtitleDraft); setEditingSubtitle(false); } if(e.key==="Escape") setEditingSubtitle(false); }}
+                  onKeyDown={e=>{ if(e.key==="Enter"){setSubtitle(subtitleDraft);setEditingSubtitle(false);} if(e.key==="Escape")setEditingSubtitle(false); }}
                   style={{fontSize:11,color:"#1d1d1f",marginLeft:10,border:"0.5px solid #0066cc",borderRadius:6,padding:"2px 8px",outline:"none",width:280}}/>
-              : <span onClick={()=>{ setSubtitleDraft(subtitle); setEditingSubtitle(true); }}
-                  title="클릭하여 수정"
-                  style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>
-                  {subtitle} ✏️
-                </span>
+              : <span onClick={()=>{setSubtitleDraft(subtitle);setEditingSubtitle(true);}} title="클릭하여 수정"
+                  style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>{subtitle} ✏️</span>
           )}
         </div>
         <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
@@ -272,9 +276,9 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
           {urgCounts.soon>0&&<span style={{fontSize:11,background:"#fcd9d9",color:"#c0392b",borderRadius:999,padding:"2px 7px",fontWeight:600}}>D-3내 {urgCounts.soon}</span>}
           {urgCounts.waiting>0&&<span style={{fontSize:11,background:"#fff3e0",color:"#bf5a00",borderRadius:999,padding:"2px 7px"}}>대기 {urgCounts.waiting}</span>}
         </div>
-        <div style={{display:"flex",gap:4}}>
-          <span style={{fontSize:12,color:"#7a7a7a",marginRight:4}}>{user.name}</span>
-          <button onClick={handleLogout} style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>로그아웃</button>
+        <div style={{display:"flex",gap:4,alignItems:"center"}}>
+          <span style={{fontSize:12,color:"#7a7a7a"}}>{user.name}</span>
+          <button onClick={handleLogout} style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"4px 10px",cursor:"pointer"}}>로그아웃</button>
           <button onClick={()=>setModal("add")} style={{fontSize:12,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"5px 12px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
           {!mobile&&<>
             <button onClick={()=>setModal("files")}   style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>📎 파일</button>
@@ -311,8 +315,6 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
       {/* Main */}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflowY:"auto",padding:mobile?"8px":"10px 12px"}}>
-
-          {/* 모바일: 카드형 */}
           {mobile&&(
             <div>
               {filtered.map(t=>(
@@ -320,8 +322,6 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
               ))}
             </div>
           )}
-
-          {/* PC: 테이블형 */}
           {!mobile&&(
             <table style={{width:"100%",borderCollapse:"separate",borderSpacing:"0 4px"}}>
               <thead>
@@ -361,7 +361,7 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
           )}
         </div>
 
-        {/* Side panel - PC only */}
+        {/* Side panel PC */}
         {selTask&&!mobile&&(
           <div style={{width:380,background:"#fff",borderLeft:"0.5px solid #e0e0e0",padding:16,overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column",gap:12}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -405,7 +405,7 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
           </div>
         )}
 
-        {/* 모바일 상세 패널 - 하단 슬라이드업 */}
+        {/* 모바일 하단 패널 */}
         {selTask&&mobile&&(
           <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderRadius:"16px 16px 0 0",padding:20,maxHeight:"80vh",overflowY:"auto",boxShadow:"0 -4px 24px rgba(0,0,0,0.12)",zIndex:50}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
@@ -438,21 +438,19 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:mobile?"flex-end":"center",justifyContent:"center",zIndex:100}}
           onClick={e=>{if(e.target===e.currentTarget)closeModal();}}>
 
-          {/* 모바일 메뉴 */}
           {modal==="menu"&&(
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:20,width:"100%",maxWidth:400,display:"flex",flexDirection:"column",gap:10}}>
               <div style={{fontSize:15,fontWeight:600,marginBottom:4}}>메뉴</div>
               {[["📎 파일","files"],["🗄 보관함","archive"],["📂 카테고리","cats"],["🗑 완료 정리","cleanup"],["긴급순","urgency"],["별점순","stars"],["기한순","due"]].map(([label,val])=>(
                 <button key={val} onClick={()=>{ if(["files","archive","cats","cleanup"].includes(val)){setModal(val);}else{setSB(val);closeModal();} }}
                   style={{fontSize:14,padding:"12px 16px",borderRadius:10,border:"0.5px solid #e0e0e0",background:sortBy===val?"#e8f1fb":"#fafafa",color:sortBy===val?"#0066cc":"#1d1d1f",textAlign:"left",cursor:"pointer"}}>
-                  {label} {["urgency","stars","due"].includes(val)&&sortBy===val?"✓":""}
+                  {label}
                 </button>
               ))}
               <button onClick={closeModal} style={{fontSize:14,padding:"12px",borderRadius:10,border:"none",background:"#f5f5f7",color:"#555",cursor:"pointer",marginTop:4}}>닫기</button>
             </div>
           )}
 
-          {/* ADD */}
           {modal==="add"&&(
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"360px",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{fontSize:16,fontWeight:600}}>새 업무 추가</div>
@@ -474,11 +472,10 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
             </div>
           )}
 
-          {/* CLEANUP */}
           {modal==="cleanup"&&(
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"380px"}}>
               <div style={{fontSize:16,fontWeight:600,marginBottom:4}}>완료 항목 정리</div>
-              <div style={{fontSize:12,color:"#7a7a7a",marginBottom:14}}>완료 상태이고 기한이 지난 항목을 삭제해요. (보관 항목 제외)</div>
+              <div style={{fontSize:12,color:"#7a7a7a",marginBottom:14}}>완료 상태이고 기한이 지난 항목을 삭제해요.</div>
               <div style={{display:"flex",gap:6,marginBottom:14}}>
                 {[7,30,60,90].map(d=><button key={d} onClick={()=>setCD(d)} style={{fontSize:12,padding:"5px 12px",borderRadius:999,cursor:"pointer",background:cleanupDays===d?"#0066cc":"#f5f5f7",color:cleanupDays===d?"#fff":"#555",border:cleanupDays===d?"none":"0.5px solid #e0e0e0"}}>{d}일+</button>)}
               </div>
@@ -496,7 +493,6 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
             </div>
           )}
 
-          {/* ARCHIVE */}
           {modal==="archive"&&(
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"560px",maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -511,7 +507,6 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
             </div>
           )}
 
-          {/* CATEGORY MANAGER */}
           {modal==="cats"&&(
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"380px",maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -539,7 +534,6 @@ const [mobile, setMobile] = useState(window.innerWidth < 768);
             </div>
           )}
 
-          {/* FILES */}
           {modal==="files"&&(
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"540px",maxHeight:"82vh",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
