@@ -59,7 +59,7 @@ export default function Login({ onLogin }) {
         {/* 로고 */}
         <div style={{textAlign:"center",marginBottom:28}}>
           <div style={{fontSize:22,fontWeight:700,color:"#1d1d1f",letterSpacing:"-0.5px"}}>업무 관리</div>
-          <div style={{fontSize:12,color:"#7a7a7a",marginTop:4}}>GC 인사팀 전용</div>
+          <div style={{fontSize:12,color:"#7a7a7a",marginTop:4}}>GC 임직원 전용</div>
         </div>
 
         {/* 탭 */}
