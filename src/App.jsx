@@ -118,17 +118,19 @@ export default function App() {
     setUser(null);
   };
 
-  if (!authChecked) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif",color:"#7a7a7a"}}>로딩 중…</div>;
-  if (!user) return <Login onLogin={setUser}/>;
-  const [mobile, setMobile] = useState(window.innerWidth < 768);
+const [mobile, setMobile] = useState(window.innerWidth < 768);
   const [subtitle, setSubtitle] = useState("GC 인사쟁이 김영빈 차장님 화이팅입니다 💪");
   const [editingSubtitle, setEditingSubtitle] = useState(false);
   const [subtitleDraft, setSubtitleDraft] = useState("");
+
   useEffect(()=>{
     const fn = () => setMobile(window.innerWidth < 768);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   },[]);
+
+  if (!authChecked) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif",color:"#7a7a7a"}}>로딩 중…</div>;
+  if (!user) return <Login onLogin={setUser}/>;
 
   const [tasks,  setTasks]  = useState([]);
   const [order,  setOrder]  = useState([]);
