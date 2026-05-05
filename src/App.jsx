@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { api } from "./api.js";
+import { api, session } from "./api.js";
+import Login from "./Login.jsx";
 
 const STATUSES = [
   { id:"todo",    label:"할 일",       bg:"#f5f5f7", color:"#555",    border:"#d0d0d5" },
@@ -96,6 +97,29 @@ function TaskCard({ t, isSel, onClick }) {
 }
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(()=>{
+    if (session.get()) {
+      api.me().then(res => {
+        if (res.id) setUser(res);
+        else session.clear();
+        setAuthChecked(true);
+      });
+    } else {
+      setAuthChecked(true);
+    }
+  },[]);
+
+  const handleLogout = async () => {
+    await api.logout();
+    session.clear();
+    setUser(null);
+  };
+
+  if (!authChecked) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif",color:"#7a7a7a"}}>로딩 중…</div>;
+  if (!user) return <Login onLogin={setUser}/>;
   const [mobile, setMobile] = useState(window.innerWidth < 768);
   const [subtitle, setSubtitle] = useState("GC 인사쟁이 김영빈 차장님 화이팅입니다 💪");
   const [editingSubtitle, setEditingSubtitle] = useState(false);
@@ -247,6 +271,8 @@ export default function App() {
           {urgCounts.waiting>0&&<span style={{fontSize:11,background:"#fff3e0",color:"#bf5a00",borderRadius:999,padding:"2px 7px"}}>대기 {urgCounts.waiting}</span>}
         </div>
         <div style={{display:"flex",gap:4}}>
+          <span style={{fontSize:12,color:"#7a7a7a",marginRight:4}}>{user.name}</span>
+          <button onClick={handleLogout} style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>로그아웃</button>
           <button onClick={()=>setModal("add")} style={{fontSize:12,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"5px 12px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
           {!mobile&&<>
             <button onClick={()=>setModal("files")}   style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>📎 파일</button>

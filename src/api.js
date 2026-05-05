@@ -1,21 +1,60 @@
 const BASE = "https://task-manager-worker.ybkim-195.workers.dev";
 
+// 세션 관리
+export const session = {
+  get: () => localStorage.getItem("session_id"),
+  set: (id) => localStorage.setItem("session_id", id),
+  clear: () => localStorage.removeItem("session_id"),
+};
+
+// 공통 fetch (자동으로 Authorization 헤더 포함)
+const req = (path, options = {}) => {
+  const sessionId = session.get();
+  return fetch(`${BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(sessionId ? { Authorization: `Bearer ${sessionId}` } : {}),
+      ...(options.headers || {}),
+    },
+  }).then(r => r.json());
+};
+
 export const api = {
-  // Tasks
-  getTasks:   ()      => fetch(`${BASE}/api/tasks`).then(r=>r.json()),
-  addTask:    task    => fetch(`${BASE}/api/tasks`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(task) }).then(r=>r.json()),
-  updateTask: (id, t) => fetch(`${BASE}/api/tasks/${id}`, { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(t) }).then(r=>r.json()),
-  deleteTask: id      => fetch(`${BASE}/api/tasks/${id}`, { method:"DELETE" }).then(r=>r.json()),
+  // ── Auth ──────────────────────────────
+  login: (email, password) =>
+    req("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
 
-  // Categories
-  getCategories:   ()       => fetch(`${BASE}/api/categories`).then(r=>r.json()),
-  addCategory:     name     => fetch(`${BASE}/api/categories`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name}) }).then(r=>r.json()),
-  updateCategory:  (id, name) => fetch(`${BASE}/api/categories/${id}`, { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name}) }).then(r=>r.json()),
-  deleteCategory:  id       => fetch(`${BASE}/api/categories/${id}`, { method:"DELETE" }).then(r=>r.json()),
+  register: (name, email, password, phone) =>
+    req("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password, phone }) }),
 
-  // Files
-  getFiles:   ()     => fetch(`${BASE}/api/files`).then(r=>r.json()),
-  addFile:    file   => fetch(`${BASE}/api/files`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(file) }).then(r=>r.json()),
-  updateFile: (id,f) => fetch(`${BASE}/api/files/${id}`, { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(f) }).then(r=>r.json()),
-  deleteFile: id     => fetch(`${BASE}/api/files/${id}`, { method:"DELETE" }).then(r=>r.json()),
+  logout: () =>
+    req("/api/auth/logout", { method: "POST" }),
+
+  me: () =>
+    req("/api/auth/me"),
+
+  resetPassword: (email) =>
+    req("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ email }) }),
+
+  changePassword: (currentPassword, newPassword) =>
+    req("/api/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+
+  // ── Tasks ─────────────────────────────
+  getTasks: () => req("/api/tasks"),
+  addTask: task => req("/api/tasks", { method: "POST", body: JSON.stringify(task) }),
+  updateTask: (id, t) => req(`/api/tasks/${id}`, { method: "PUT", body: JSON.stringify(t) }),
+  deleteTask: id => req(`/api/tasks/${id}`, { method: "DELETE" }),
+
+  // ── Categories ────────────────────────
+  getCategories: () => req("/api/categories"),
+  addCategory: name => req("/api/categories", { method: "POST", body: JSON.stringify({ name }) }),
+  updateCategory: (id, name) => req(`/api/categories/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
+  deleteCategory: id => req(`/api/categories/${id}`, { method: "DELETE" }),
+
+  // ── Files ─────────────────────────────
+  getFiles: () => req("/api/files"),
+  addFile: file => req("/api/files", { method: "POST", body: JSON.stringify(file) }),
+  updateFile: (id, f) => req(`/api/files/${id}`, { method: "PUT", body: JSON.stringify(f) }),
+  deleteFile: id => req(`/api/files/${id}`, { method: "DELETE" }),
 };
