@@ -1,7 +1,7 @@
 {
-  "name": "업무 관리 - GC 인사",
-  "short_name": "업무관리",
-  "description": "김영빈 차장님의 업무 관리 앱",
+  "name": "GC업무관리툴",
+  "short_name": "GC업무관리",
+  "description": "GC업무관리툴 made by ybkim",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
