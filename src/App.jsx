@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { api, session } from "./api.js";
 import Login from "./Login.jsx";
 
@@ -9,12 +9,10 @@ const STATUSES = [
   { id:"done",    label:"완료",        bg:"#e6f4ea", color:"#1a7f37", border:"#a8d5b5" },
   { id:"hold",    label:"보류",        bg:"#f3eeff", color:"#6835c9", border:"#c9b3f5" },
 ];
-const INIT_CATS  = ["급여 및 4대보험","임직원 관리","규정관리","인사평가","SW관리","교육·행사","정부지원금","복리후생","외부연계"];
-const FILE_TAGS  = ["인사","규정","급여","교육","계약","기타"];
-const FILE_ICONS = { xlsx:"🟢", xls:"🟢", pdf:"🔴", docx:"🔵", doc:"🔵", pptx:"🟠", url:"🔗" };
+
+const INIT_CATS = ["급여 및 4대보험","임직원 관리","규정관리","인사평가","SW관리","교육·행사","정부지원금","복리후생","외부연계"];
 
 let nid = 100;
-let fid = 10;
 const today = new Date(); today.setHours(0,0,0,0);
 
 function daysDiff(due) {
@@ -45,7 +43,7 @@ function DueBadge({ due, status }) {
   let color="#7a7a7a", bg="transparent", fw=400;
   if (d<0)       { color="#fff";    bg="#c0392b"; fw=600; }
   else if (d<=2) { color="#c0392b"; bg="#fdecea"; fw=600; }
-  else if (d<=3) { color="#bf5a00"; bg:"#fff0e0"; fw=600; }
+  else if (d<=3) { color="#bf5a00"; bg="#fff0e0"; fw=600; }
   else if (d<=7) { color="#bf5a00"; bg="#fff3e0"; fw=500; }
   const label = d<0?`D+${Math.abs(d)}`:d===0?"오늘":`D-${d}`;
   return (
@@ -77,13 +75,12 @@ function Pill({ label, active, onClick, accent }) {
 function TaskCard({ t, isSel, onClick }) {
   const {bg, bl} = rowBg(t, isSel);
   return (
-    <div onClick={onClick} style={{background:bg, borderLeft:bl, borderRadius:12, padding:"12px 14px", marginBottom:8, cursor:"pointer", transition:"background 0.15s"}}>
-      <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6}}>
-        <span style={{fontSize:14, fontWeight:t.status==="done"?400:600, color:t.status==="done"?"#aaa":"#1d1d1f", textDecoration:t.status==="done"?"line-through":"none", flex:1, marginRight:8, lineHeight:1.4}}>{t.title}</span>
+    <div onClick={onClick} style={{background:bg,borderLeft:bl,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer",transition:"background 0.15s"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+        <span style={{fontSize:14,fontWeight:t.status==="done"?400:600,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none",flex:1,marginRight:8,lineHeight:1.4}}>{t.title}</span>
         <DueBadge due={t.due} status={t.status}/>
       </div>
-      <div style={{display:"flex", alignItems:"center", gap:6, flexWrap:"wrap"}}>
-        <span style={{fontSize:11, color:"#7a7a7a", background:"#f0f0f0", borderRadius:5, padding:"1px 6px"}}>{t.cat}</span>
+      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
         <StatusBadge s={t.status}/>
         <Stars v={t.stars}/>
         {t.waiting_for&&<span style={{fontSize:10,color:"#bf5a00",background:"#fff3e0",padding:"1px 5px",borderRadius:4}}>⏳{t.waiting_for}</span>}
@@ -96,45 +93,30 @@ function TaskCard({ t, isSel, onClick }) {
 }
 
 export default function App() {
-  // ── 모든 useState/useEffect를 최상단에 ──
-  const [user,           setUser]           = useState(null);
-  const [authChecked,    setAuthChecked]    = useState(false);
-  const [mobile,         setMobile]         = useState(window.innerWidth < 768);
-  const [subtitle,       setSubtitle]       = useState("GC 인사쟁이 김영빈 차장님 화이팅입니다 💪");
-  const [editingSubtitle,setEditingSubtitle]= useState(false);
-  const [subtitleDraft,  setSubtitleDraft]  = useState("");
-  const [tasks,          setTasks]          = useState([]);
-  const [order,          setOrder]          = useState([]);
-  const [sel,            setSel]            = useState(null);
-  const [filterStatus,   setFS]             = useState("active");
-  const [filterCat,      setFC]             = useState("전체");
-  const [sortBy,         setSB]             = useState("urgency");
-  const [modal,          setModal]          = useState(null);
-  const [cats,           setCats]           = useState(INIT_CATS);
-  const [catEditIdx,     setCatEditIdx]     = useState(null);
-  const [catEditVal,     setCatEditVal]     = useState("");
-  const [newCatName,     setNewCatName]     = useState("");
-  const [files,          setFiles]          = useState([]);
-  const [fileSearch,     setFileSearch]     = useState("");
-  const [fileTag,        setFileTag]        = useState("전체");
-  const [addingFile,     setAddingFile]     = useState(false);
-  const [newFile,        setNewFile]        = useState({name:"",type:"url",url:"",memo:"",tag:"기타"});
-  const [fileEditId,     setFileEditId]     = useState(null);
-  const [fileEditVal,    setFileEditVal]    = useState(null);
-  const [cleanupDays,    setCD]             = useState(30);
-  const [archSearch,     setAS]             = useState("");
-  const [newT,           setNewT]           = useState({cat:INIT_CATS[0],title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""});
+  const [user,            setUser]            = useState(null);
+  const [authChecked,     setAuthChecked]     = useState(false);
+  const [mobile,          setMobile]          = useState(window.innerWidth < 768);
+  const [subtitle,        setSubtitle]        = useState("");
+  const [editingSubtitle, setEditingSubtitle] = useState(false);
+  const [subtitleDraft,   setSubtitleDraft]   = useState("");
+  const [tasks,           setTasks]           = useState([]);
+  const [order,           setOrder]           = useState([]);
+  const [sel,             setSel]             = useState(null);
+  const [filterStatus,    setFS]              = useState("active");
+  const [sortBy,          setSB]              = useState("urgency");
+  const [modal,           setModal]           = useState(null);
+  const [cleanupDays,     setCD]              = useState(30);
+  const [archSearch,      setAS]              = useState("");
+  const [newT,            setNewT]            = useState({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""});
 
   const dragId   = useRef(null);
   const dragOver = useRef(null);
-  const cDragId  = useRef(null);
-  const cDragOver= useRef(null);
 
   // 인증 확인
   useEffect(()=>{
     if (session.get()) {
       api.me().then(res => {
-        if (res.id) setUser(res);
+        if (res.id) { setUser(res); setSubtitle(res.subtitle||""); }
         else session.clear();
         setAuthChecked(true);
       });
@@ -150,36 +132,28 @@ export default function App() {
     return () => window.removeEventListener("resize", fn);
   },[]);
 
-  // 데이터 로드 (로그인 후)
+  // 데이터 로드
   useEffect(()=>{
     if (!user) return;
     api.getTasks().then(data=>{ if(Array.isArray(data)){ setTasks(data.map(t=>({...t,checklist:t.checklist?JSON.parse(t.checklist):[],archived:!!t.archived}))); setOrder(data.map(t=>t.id)); }});
-    api.getCategories().then(data=>{ if(Array.isArray(data)) setCats(data.map(c=>c.name)); });
-    api.getFiles().then(data=>{ if(Array.isArray(data)) setFiles(data); });
   },[user]);
 
-  // ── 로그인 체크 (모든 훅 이후에) ──
   if (!authChecked) return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif",color:"#7a7a7a"}}>
-      로딩 중…
-    </div>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif",color:"#7a7a7a"}}>로딩 중…</div>
   );
-  if (!user) return <Login onLogin={setUser}/>;
+  if (!user) return <Login onLogin={u=>{ setUser(u); setSubtitle(u.subtitle||""); }}/>;
 
-  // ── 로그아웃 ──
-  const handleLogout = async () => {
-    await api.logout();
-    session.clear();
-    setUser(null);
+  const handleLogout = async () => { await api.logout(); session.clear(); setUser(null); };
+  const saveSubtitle = async (val) => {
+    setSubtitle(val); setEditingSubtitle(false);
+    await api.saveSubtitle(val);
   };
 
-  // ── derived ──
-  const filtered = (() => {
+  const filtered = (()=>{
     let base = sortBy==="manual" ? order.map(id=>tasks.find(t=>t.id===id)).filter(Boolean) : [...tasks];
     if (filterStatus==="active") base=base.filter(x=>x.status!=="done");
     else if (filterStatus==="done") base=base.filter(x=>x.status==="done");
     else if (filterStatus!=="전체") base=base.filter(x=>x.status===filterStatus);
-    if (filterCat!=="전체") base=base.filter(x=>x.cat===filterCat);
     if (sortBy==="urgency") base=[...base].sort((a,b)=>urgency(b)-urgency(a)||(a.due||"z").localeCompare(b.due||"z"));
     else if (sortBy==="stars") base=[...base].sort((a,b)=>b.stars-a.stars);
     else if (sortBy==="due")   base=[...base].sort((a,b)=>(a.due||"z").localeCompare(b.due||"z"));
@@ -188,21 +162,16 @@ export default function App() {
 
   const selTask = sel ? tasks.find(t=>t.id===sel) : null;
 
-  const archives = (() => {
+  const archives = (()=>{
     const q=archSearch.toLowerCase();
-    return tasks.filter(t=>t.archived).filter(t=>!q||t.title.includes(q)||(t.memo||"").includes(q)||(t.guide||"").includes(q)||t.cat.includes(q))
+    return tasks.filter(t=>t.archived).filter(t=>!q||t.title.includes(q)||(t.memo||"").includes(q)||(t.guide||"").includes(q))
       .sort((a,b)=>(b.completedAt||"").localeCompare(a.completedAt||""));
   })();
 
-  const cleanupTargets = (() => {
+  const cleanupTargets = (()=>{
     const cut=new Date(); cut.setDate(cut.getDate()-cleanupDays);
     return tasks.filter(t=>t.status==="done"&&!t.archived&&t.due&&new Date(t.due)<=cut);
   })();
-
-  const shownFiles = files.filter(f=>{
-    const q=fileSearch.toLowerCase();
-    return (!q||f.name.toLowerCase().includes(q)||(f.memo||"").toLowerCase().includes(q))&&(fileTag==="전체"||f.tag===fileTag);
-  });
 
   const urgCounts = {
     overdue: tasks.filter(t=>t.status!=="done"&&t.status!=="hold"&&daysDiff(t.due)<0).length,
@@ -218,17 +187,14 @@ export default function App() {
       api.updateTask(id, {...updated, checklist:JSON.stringify(updated.checklist||[]), archived:updated.archived?1:0});
     }
   };
-  const del = id => {
-    setTasks(p=>p.filter(t=>t.id!==id)); setOrder(p=>p.filter(x=>x!==id));
-    if(sel===id)setSel(null); api.deleteTask(id);
-  };
+  const del = id => { setTasks(p=>p.filter(t=>t.id!==id)); setOrder(p=>p.filter(x=>x!==id)); if(sel===id)setSel(null); api.deleteTask(id); };
   const archiveTask = id => { upd(id,{status:"done",archived:true,completedAt:new Date().toISOString().slice(0,10)}); setSel(null); };
   const addTask = () => {
     if (!newT.title.trim()) return;
-    api.addTask({...newT,guide:"",checklist:"[]",archived:0}).then(res=>{
-      if(res.id){ const t={...newT,id:res.id,guide:"",checklist:[],archived:false}; setTasks(p=>[...p,t]); setOrder(p=>[...p,res.id]); }
+    api.addTask({...newT,cat:"일반",guide:"",checklist:"[]",archived:0}).then(res=>{
+      if(res.id){ const t={...newT,cat:"일반",id:res.id,guide:"",checklist:[],archived:false}; setTasks(p=>[...p,t]); setOrder(p=>[...p,res.id]); }
     });
-    setNewT({cat:cats[0],title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""}); setModal(null);
+    setNewT({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""}); setModal(null);
   };
 
   const onDS=(e,id)=>{ dragId.current=id; e.dataTransfer.effectAllowed="move"; };
@@ -242,17 +208,7 @@ export default function App() {
     dragId.current=dragOver.current=null;
   };
 
-  const catStartEdit=i=>{setCatEditIdx(i);setCatEditVal(cats[i]);};
-  const catSaveEdit=i=>{ const v=catEditVal.trim(); if(!v){setCatEditIdx(null);return;} const old=cats[i]; setCats(p=>p.map((c,j)=>j===i?v:c)); setTasks(p=>p.map(t=>t.cat===old?{...t,cat:v}:t)); setCatEditIdx(null); };
-  const catRemove=i=>{ if(tasks.filter(t=>t.cat===cats[i]).length>0)return; setCats(p=>p.filter((_,j)=>j!==i)); };
-  const catAdd=()=>{ const v=newCatName.trim(); if(!v||cats.includes(v))return; setCats(p=>[...p,v]); setNewCatName(""); };
-  const onCatDS=i=>{cDragId.current=i;};
-  const onCatDE=i=>{cDragOver.current=i;};
-  const onCatDEnd=()=>{ const f=cDragId.current,t=cDragOver.current; if(f!==null&&t!==null&&f!==t){const a=[...cats];a.splice(t,0,a.splice(f,1)[0]);setCats(a);} cDragId.current=cDragOver.current=null; };
-
-  const saveNewFile=()=>{ if(!newFile.name.trim())return; api.addFile(newFile).then(res=>{ if(res.id) setFiles(p=>[...p,{...newFile,id:res.id,updatedAt:new Date().toISOString().slice(0,10)}]); }); setNewFile({name:"",type:"url",url:"",memo:"",tag:"기타"}); setAddingFile(false); };
-  const saveFileEdit=()=>{ api.updateFile(fileEditId,fileEditVal).then(()=>{ setFiles(p=>p.map(f=>f.id===fileEditId?{...fileEditVal,updatedAt:new Date().toISOString().slice(0,10)}:f)); }); setFileEditId(null); setFileEditVal(null); };
-  const closeModal=()=>{ setModal(null); setAddingFile(false); setFileEditId(null); setFileEditVal(null); setCatEditIdx(null); };
+  const closeModal=()=>setModal(null);
 
   return (
     <div style={{fontFamily:"-apple-system,'Inter',sans-serif",color:"#1d1d1f",height:"100vh",display:"flex",flexDirection:"column",background:"#f5f5f7",overflow:"hidden"}}>
@@ -264,11 +220,13 @@ export default function App() {
           {!mobile&&(
             editingSubtitle
               ? <input autoFocus value={subtitleDraft} onChange={e=>setSubtitleDraft(e.target.value)}
-                  onBlur={()=>{ setSubtitle(subtitleDraft); setEditingSubtitle(false); }}
-                  onKeyDown={e=>{ if(e.key==="Enter"){setSubtitle(subtitleDraft);setEditingSubtitle(false);} if(e.key==="Escape")setEditingSubtitle(false); }}
+                  onBlur={()=>saveSubtitle(subtitleDraft)}
+                  onKeyDown={e=>{ if(e.key==="Enter")saveSubtitle(subtitleDraft); if(e.key==="Escape")setEditingSubtitle(false); }}
                   style={{fontSize:11,color:"#1d1d1f",marginLeft:10,border:"0.5px solid #0066cc",borderRadius:6,padding:"2px 8px",outline:"none",width:280}}/>
               : <span onClick={()=>{setSubtitleDraft(subtitle);setEditingSubtitle(true);}} title="클릭하여 수정"
-                  style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>{subtitle} ✏️</span>
+                  style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>
+                  {subtitle||"✏️ 나만의 문구를 입력해보세요"} ✏️
+                </span>
           )}
         </div>
         <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
@@ -281,9 +239,7 @@ export default function App() {
           <button onClick={handleLogout} style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"4px 10px",cursor:"pointer"}}>로그아웃</button>
           <button onClick={()=>setModal("add")} style={{fontSize:12,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"5px 12px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
           {!mobile&&<>
-            <button onClick={()=>setModal("files")}   style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>📎 파일</button>
             <button onClick={()=>setModal("archive")} style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>🗄 보관함</button>
-            <button onClick={()=>setModal("cats")}    style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>📂 카테고리</button>
             <button onClick={()=>setModal("cleanup")} style={{fontSize:11,background:"#f5f5f7",color:"#7a7a7a",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>🗑 정리</button>
           </>}
           {mobile&&<button onClick={()=>setModal("menu")} style={{fontSize:16,background:"#f5f5f7",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"4px 10px",cursor:"pointer"}}>☰</button>}
@@ -302,13 +258,8 @@ export default function App() {
           <Pill label="긴급순" active={sortBy==="urgency"} onClick={()=>setSB("urgency")}/>
           <Pill label="별점순" active={sortBy==="stars"}   onClick={()=>setSB("stars")}/>
           <Pill label="기한순" active={sortBy==="due"}     onClick={()=>setSB("due")}/>
+          {sortBy==="manual"&&<Pill label="직접정렬 중" active={true} onClick={()=>{}} accent="#6835c9"/>}
         </>}
-        <span style={{width:1,height:14,background:"#e0e0e0",margin:"0 2px",flexShrink:0}}/>
-        <select value={filterCat} onChange={e=>setFC(e.target.value)}
-          style={{fontSize:11,padding:"3px 8px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f5f5f7",color:"#555",flexShrink:0}}>
-          <option>전체</option>
-          {cats.map(c=><option key={c}>{c}</option>)}
-        </select>
         <span style={{marginLeft:"auto",fontSize:11,color:"#aaa",flexShrink:0}}>{filtered.length}건</span>
       </div>
 
@@ -316,18 +267,13 @@ export default function App() {
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflowY:"auto",padding:mobile?"8px":"10px 12px"}}>
           {mobile&&(
-            <div>
-              {filtered.map(t=>(
-                <TaskCard key={t.id} t={t} isSel={sel===t.id} onClick={()=>setSel(sel===t.id?null:t.id)}/>
-              ))}
-            </div>
+            <div>{filtered.map(t=><TaskCard key={t.id} t={t} isSel={sel===t.id} onClick={()=>setSel(sel===t.id?null:t.id)}/>)}</div>
           )}
           {!mobile&&(
             <table style={{width:"100%",borderCollapse:"separate",borderSpacing:"0 4px"}}>
               <thead>
                 <tr style={{fontSize:11,color:"#aaa"}}>
                   {sortBy==="manual"&&<th style={{width:20,fontWeight:400}}/>}
-                  <th style={{textAlign:"left",padding:"0 8px",fontWeight:400,width:130}}>카테고리</th>
                   <th style={{textAlign:"left",padding:"0 8px",fontWeight:400}}>업무</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:70}}>중요도</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>상태</th>
@@ -342,8 +288,7 @@ export default function App() {
                       onClick={()=>setSel(isSel?null:t.id)}
                       style={{cursor:"pointer",background:bg,borderLeft:bl,borderRadius:10,transition:"background 0.15s",userSelect:"none"}}>
                       {sortBy==="manual"&&<td style={{padding:"8px 4px 8px 8px",borderRadius:"10px 0 0 10px",color:"#ccc",fontSize:13,cursor:"grab"}}>☰</td>}
-                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:12,color:"#7a7a7a",whiteSpace:"nowrap",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis"}}>{t.cat}</td>
-                      <td style={{padding:"8px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none"}}>
+                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none"}}>
                         {t.title}
                         {t.waiting_for&&<span style={{fontSize:10,color:"#bf5a00",marginLeft:6,background:"#fff3e0",padding:"1px 5px",borderRadius:4}}>⏳{t.waiting_for}</span>}
                         {t.memo&&<span style={{fontSize:10,color:"#aaa",marginLeft:4}}>📝</span>}
@@ -370,11 +315,10 @@ export default function App() {
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {[
-                ["제목",    <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:13,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
-                ["카테고리",<select value={selTask.cat} onChange={e=>upd(selTask.id,{cat:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{cats.map(c=><option key={c}>{c}</option>)}</select>],
-                ["상태",    <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
-                ["기한",    <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
-                ["중요도",  <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
+                ["제목",   <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:13,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
+                ["상태",   <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
+                ["기한",   <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
+                ["중요도", <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
               ].map(([label,el])=>(<div key={label}><div style={{fontSize:10,color:"#aaa",marginBottom:3}}>{label}</div>{el}</div>))}
               {selTask.status==="waiting"&&(<div><div style={{fontSize:10,color:"#bf5a00",marginBottom:3}}>회신 대기 담당자</div><input value={selTask.waiting_for||""} placeholder="누구의 회신을 기다리나요?" onChange={e=>upd(selTask.id,{waiting_for:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"1px solid #ffcc80",background:"#fff9f0",color:"#1d1d1f",width:"100%",boxSizing:"border-box"}}/></div>)}
               <div><div style={{fontSize:10,color:"#aaa",marginBottom:3}}>메모</div><textarea value={selTask.memo||""} rows={2} placeholder="참고사항" onChange={e=>upd(selTask.id,{memo:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}}/></div>
@@ -414,11 +358,10 @@ export default function App() {
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {[
-                ["제목",    <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:14,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
-                ["카테고리",<select value={selTask.cat} onChange={e=>upd(selTask.id,{cat:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{cats.map(c=><option key={c}>{c}</option>)}</select>],
-                ["상태",    <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
-                ["기한",    <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
-                ["중요도",  <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
+                ["제목",   <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:14,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
+                ["상태",   <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
+                ["기한",   <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
+                ["중요도", <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
               ].map(([label,el])=>(<div key={label}><div style={{fontSize:11,color:"#aaa",marginBottom:3}}>{label}</div>{el}</div>))}
               {selTask.status==="waiting"&&(<div><div style={{fontSize:11,color:"#bf5a00",marginBottom:3}}>회신 대기 담당자</div><input value={selTask.waiting_for||""} placeholder="누구의 회신을 기다리나요?" onChange={e=>upd(selTask.id,{waiting_for:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"1px solid #ffcc80",background:"#fff9f0",color:"#1d1d1f",width:"100%",boxSizing:"border-box"}}/></div>)}
               <div><div style={{fontSize:11,color:"#aaa",marginBottom:3}}>메모</div><textarea value={selTask.memo||""} rows={2} onChange={e=>upd(selTask.id,{memo:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",boxSizing:"border-box",resize:"none",fontFamily:"inherit"}}/></div>
@@ -433,16 +376,16 @@ export default function App() {
         )}
       </div>
 
-      {/* ── Modals ── */}
+      {/* Modals */}
       {modal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:mobile?"flex-end":"center",justifyContent:"center",zIndex:100}}
           onClick={e=>{if(e.target===e.currentTarget)closeModal();}}>
 
           {modal==="menu"&&(
-            <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:20,width:"100%",maxWidth:400,display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{background:"#fff",borderRadius:"16px 16px 0 0",padding:20,width:"100%",display:"flex",flexDirection:"column",gap:8}}>
               <div style={{fontSize:15,fontWeight:600,marginBottom:4}}>메뉴</div>
-              {[["📎 파일","files"],["🗄 보관함","archive"],["📂 카테고리","cats"],["🗑 완료 정리","cleanup"],["긴급순","urgency"],["별점순","stars"],["기한순","due"]].map(([label,val])=>(
-                <button key={val} onClick={()=>{ if(["files","archive","cats","cleanup"].includes(val)){setModal(val);}else{setSB(val);closeModal();} }}
+              {[["🗄 보관함","archive"],["🗑 완료 정리","cleanup"],["긴급순","urgency"],["별점순","stars"],["기한순","due"]].map(([label,val])=>(
+                <button key={val} onClick={()=>{ if(["archive","cleanup"].includes(val)){setModal(val);}else{setSB(val);closeModal();} }}
                   style={{fontSize:14,padding:"12px 16px",borderRadius:10,border:"0.5px solid #e0e0e0",background:sortBy===val?"#e8f1fb":"#fafafa",color:sortBy===val?"#0066cc":"#1d1d1f",textAlign:"left",cursor:"pointer"}}>
                   {label}
                 </button>
@@ -455,10 +398,7 @@ export default function App() {
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"360px",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{fontSize:16,fontWeight:600}}>새 업무 추가</div>
               <input placeholder="업무 제목" value={newT.title} onChange={e=>setNewT(p=>({...p,title:e.target.value}))} style={{fontSize:13,padding:"10px 12px",borderRadius:10,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
-              <div style={{display:"flex",gap:8}}>
-                <select value={newT.cat} onChange={e=>setNewT(p=>({...p,cat:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{cats.map(c=><option key={c}>{c}</option>)}</select>
-                <select value={newT.status} onChange={e=>setNewT(p=>({...p,status:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
-              </div>
+              <select value={newT.status} onChange={e=>setNewT(p=>({...p,status:e.target.value}))} style={{fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input type="date" value={newT.due} onChange={e=>setNewT(p=>({...p,due:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}/>
                 <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,color:"#aaa"}}>중요도</span><Stars v={newT.stars} onChange={v=>setNewT(p=>({...p,stars:v}))}/></div>
@@ -502,99 +442,8 @@ export default function App() {
               <input placeholder="검색…" value={archSearch} onChange={e=>setAS(e.target.value)} style={{fontSize:13,padding:"8px 12px",borderRadius:10,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
               {archives.length===0?<div style={{fontSize:13,color:"#aaa",textAlign:"center",padding:"24px 0"}}>보관된 업무가 없어요</div>
                 :<div style={{overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
-                  {(()=>{ const byDate={}; archives.forEach(t=>{const d=t.completedAt||"날짜 미정";if(!byDate[d])byDate[d]=[];byDate[d].push(t);}); return Object.entries(byDate).map(([date,items])=>(<div key={date}><div style={{fontSize:11,fontWeight:600,color:"#7a7a7a",padding:"4px 0 6px",borderBottom:"0.5px solid #f0f0f0",marginBottom:6}}>📅 {date}</div>{items.map(t=>(<div key={t.id} style={{background:"#fafafa",border:"0.5px solid #e8e8e8",borderRadius:10,padding:"10px 14px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:500}}>{t.title} <span style={{fontSize:11,color:"#aaa"}}>{t.cat}</span></span><Stars v={t.stars}/></div>{t.memo&&<div style={{fontSize:12,color:"#555",marginBottom:4}}>📝 {t.memo}</div>}{t.guide&&<details><summary style={{fontSize:11,color:"#0066cc",cursor:"pointer"}}>처리 방법 보기</summary><pre style={{fontSize:11,color:"#555",marginTop:6,whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.6,background:"#f5f5f7",borderRadius:7,padding:"8px 10px"}}>{t.guide}</pre></details>}</div>))}</div>)); })()}
+                  {(()=>{ const byDate={}; archives.forEach(t=>{const d=t.completedAt||"날짜 미정";if(!byDate[d])byDate[d]=[];byDate[d].push(t);}); return Object.entries(byDate).map(([date,items])=>(<div key={date}><div style={{fontSize:11,fontWeight:600,color:"#7a7a7a",padding:"4px 0 6px",borderBottom:"0.5px solid #f0f0f0",marginBottom:6}}>📅 {date}</div>{items.map(t=>(<div key={t.id} style={{background:"#fafafa",border:"0.5px solid #e8e8e8",borderRadius:10,padding:"10px 14px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:500}}>{t.title}</span><Stars v={t.stars}/></div>{t.memo&&<div style={{fontSize:12,color:"#555",marginBottom:4}}>📝 {t.memo}</div>}{t.guide&&<details><summary style={{fontSize:11,color:"#0066cc",cursor:"pointer"}}>처리 방법 보기</summary><pre style={{fontSize:11,color:"#555",marginTop:6,whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.6,background:"#f5f5f7",borderRadius:7,padding:"8px 10px"}}>{t.guide}</pre></details>}</div>))}</div>)); })()}
                 </div>}
-            </div>
-          )}
-
-          {modal==="cats"&&(
-            <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"380px",maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontSize:16,fontWeight:600}}>📂 카테고리 관리</div>
-                <button onClick={closeModal} style={{fontSize:18,background:"none",border:"none",color:"#aaa",cursor:"pointer"}}>×</button>
-              </div>
-              <div style={{overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:4}}>
-                {cats.map((c,i)=>(
-                  <div key={c} draggable onDragStart={()=>onCatDS(i)} onDragEnter={()=>onCatDE(i)} onDragEnd={onCatDEnd} onDragOver={e=>e.preventDefault()}
-                    style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,border:"0.5px solid #e8e8e8",background:"#fafafa",userSelect:"none"}}>
-                    <span style={{color:"#ccc",fontSize:13,flexShrink:0,cursor:"grab"}}>☰</span>
-                    {catEditIdx===i
-                      ?<input autoFocus value={catEditVal} onChange={e=>setCatEditVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")catSaveEdit(i);if(e.key==="Escape")setCatEditIdx(null);}} onBlur={()=>catSaveEdit(i)} style={{flex:1,fontSize:13,padding:"3px 7px",borderRadius:7,border:"1px solid #0066cc",outline:"none",color:"#1d1d1f"}}/>
-                      :<span style={{flex:1,fontSize:13,color:"#1d1d1f"}}>{c}</span>}
-                    <span style={{fontSize:11,color:"#aaa"}}>{tasks.filter(t=>t.cat===c).length}건</span>
-                    <button onClick={()=>catStartEdit(i)} style={{fontSize:11,color:"#0066cc",background:"none",border:"none",cursor:"pointer",padding:"2px 6px"}}>수정</button>
-                    <button onClick={()=>catRemove(i)} style={{fontSize:11,color:tasks.filter(t=>t.cat===c).length>0?"#ccc":"#c0392b",background:"none",border:"none",cursor:tasks.filter(t=>t.cat===c).length>0?"not-allowed":"pointer",padding:"2px 6px"}}>삭제</button>
-                  </div>
-                ))}
-              </div>
-              <div style={{borderTop:"0.5px solid #f0f0f0",paddingTop:12,display:"flex",gap:8}}>
-                <input placeholder="새 카테고리 이름" value={newCatName} onChange={e=>setNewCatName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&catAdd()} style={{flex:1,fontSize:13,padding:"8px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
-                <button onClick={catAdd} style={{fontSize:13,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"8px 16px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
-              </div>
-            </div>
-          )}
-
-          {modal==="files"&&(
-            <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"540px",maxHeight:"82vh",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontSize:16,fontWeight:600}}>📎 중요 파일 보관</div>
-                <button onClick={closeModal} style={{fontSize:18,background:"none",border:"none",color:"#aaa",cursor:"pointer"}}>×</button>
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                <input placeholder="파일명, 메모 검색…" value={fileSearch} onChange={e=>setFileSearch(e.target.value)} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
-                <button onClick={()=>setAddingFile(p=>!p)} style={{fontSize:12,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"8px 14px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
-              </div>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                {["전체",...FILE_TAGS].map(t=><button key={t} onClick={()=>setFileTag(t)} style={{fontSize:11,padding:"3px 10px",borderRadius:999,cursor:"pointer",background:fileTag===t?"#0066cc":"#f5f5f7",color:fileTag===t?"#fff":"#555",border:fileTag===t?"none":"0.5px solid #e0e0e0"}}>{t}</button>)}
-              </div>
-              {addingFile&&(
-                <div style={{background:"#f5f5f7",borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8,border:"0.5px solid #e0e0e0"}}>
-                  <div style={{display:"flex",gap:8}}>
-                    <input placeholder="파일/링크 이름" value={newFile.name} onChange={e=>setNewFile(p=>({...p,name:e.target.value}))} style={{flex:2,fontSize:12,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f",background:"#fff"}}/>
-                    <select value={newFile.tag} onChange={e=>setNewFile(p=>({...p,tag:e.target.value}))} style={{flex:1,fontSize:12,padding:"6px 8px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{FILE_TAGS.map(t=><option key={t}>{t}</option>)}</select>
-                  </div>
-                  <input placeholder="링크 URL" value={newFile.url} onChange={e=>setNewFile(p=>({...p,url:e.target.value}))} style={{fontSize:12,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f",background:"#fff"}}/>
-                  <input placeholder="메모 (선택)" value={newFile.memo} onChange={e=>setNewFile(p=>({...p,memo:e.target.value}))} style={{fontSize:12,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f",background:"#fff"}}/>
-                  <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                    <button onClick={()=>setAddingFile(false)} style={{fontSize:12,background:"none",border:"0.5px solid #d0d0d5",borderRadius:999,padding:"5px 14px",cursor:"pointer",color:"#555"}}>취소</button>
-                    <button onClick={saveNewFile} style={{fontSize:12,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"5px 16px",cursor:"pointer",fontWeight:500}}>저장</button>
-                  </div>
-                </div>
-              )}
-              <div style={{overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:6}}>
-                {shownFiles.length===0?<div style={{fontSize:13,color:"#aaa",textAlign:"center",padding:"24px 0"}}>파일이 없어요</div>
-                  :shownFiles.map(f=>(
-                  <div key={f.id} style={{background:"#fafafa",border:"0.5px solid #e8e8e8",borderRadius:10,padding:"10px 14px"}}>
-                    {fileEditId===f.id&&fileEditVal
-                      ?<div style={{display:"flex",flexDirection:"column",gap:8}}>
-                        <div style={{display:"flex",gap:8}}>
-                          <input value={fileEditVal.name} onChange={e=>setFileEditVal(p=>({...p,name:e.target.value}))} style={{flex:2,fontSize:12,padding:"5px 8px",borderRadius:7,border:"1px solid #0066cc",outline:"none",color:"#1d1d1f"}}/>
-                          <select value={fileEditVal.tag} onChange={e=>setFileEditVal(p=>({...p,tag:e.target.value}))} style={{flex:1,fontSize:12,padding:"5px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{FILE_TAGS.map(t=><option key={t}>{t}</option>)}</select>
-                        </div>
-                        <input value={fileEditVal.url||""} onChange={e=>setFileEditVal(p=>({...p,url:e.target.value}))} placeholder="링크 URL" style={{fontSize:12,padding:"5px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
-                        <input value={fileEditVal.memo||""} onChange={e=>setFileEditVal(p=>({...p,memo:e.target.value}))} placeholder="메모" style={{fontSize:12,padding:"5px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
-                        <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
-                          <button onClick={()=>{setFileEditId(null);setFileEditVal(null);}} style={{fontSize:11,background:"none",border:"0.5px solid #d0d0d5",borderRadius:999,padding:"4px 12px",cursor:"pointer",color:"#555"}}>취소</button>
-                          <button onClick={saveFileEdit} style={{fontSize:11,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"4px 14px",cursor:"pointer",fontWeight:500}}>저장</button>
-                        </div>
-                      </div>
-                      :<div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-                        <span style={{fontSize:20,flexShrink:0}}>{FILE_ICONS[f.type]||"📄"}</span>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                            <span style={{fontSize:13,fontWeight:500,color:"#1d1d1f"}}>{f.name}</span>
-                            <span style={{fontSize:10,background:"#e8f1fb",color:"#0050a0",borderRadius:5,padding:"1px 6px"}}>{f.tag}</span>
-                          </div>
-                          {f.memo&&<div style={{fontSize:11,color:"#7a7a7a",marginBottom:3}}>{f.memo}</div>}
-                          {f.url?<a href={f.url} target="_blank" rel="noreferrer" style={{fontSize:11,color:"#0066cc",wordBreak:"break-all"}}>{f.url}</a>:<span style={{fontSize:11,color:"#bbb"}}>링크 없음</span>}
-                        </div>
-                        <div style={{display:"flex",gap:4,flexShrink:0}}>
-                          <button onClick={()=>{setFileEditId(f.id);setFileEditVal({...f});}} style={{fontSize:11,color:"#0066cc",background:"none",border:"0.5px solid #b0cce8",borderRadius:6,padding:"3px 8px",cursor:"pointer"}}>수정</button>
-                          <button onClick={()=>{api.deleteFile(f.id);setFiles(p=>p.filter(x=>x.id!==f.id));}} style={{fontSize:11,color:"#c0392b",background:"none",border:"0.5px solid #f5c6c6",borderRadius:6,padding:"3px 8px",cursor:"pointer"}}>삭제</button>
-                        </div>
-                      </div>}
-                  </div>))}
-              </div>
             </div>
           )}
         </div>
