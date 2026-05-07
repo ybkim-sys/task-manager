@@ -271,7 +271,7 @@ export default function App() {
                   style={{fontSize:11,color:"#1d1d1f",marginLeft:10,border:"0.5px solid #0066cc",borderRadius:6,padding:"2px 8px",outline:"none",width:280}}/>
               : <span onClick={()=>{setSubtitleDraft(subtitle);setEditingSubtitle(true);}} title="클릭하여 수정"
                   style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>
-                  {subtitle||"✏️ 나만의 문구를 입력해보세요"} ✏️
+                  {subtitle||"오늘도 화이팅입니다. 아자 아자~😍🔅🫰💕🎉👈🤣"}
                 </span>
           )}
         </div>
