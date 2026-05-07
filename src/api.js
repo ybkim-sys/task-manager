@@ -36,7 +36,8 @@ export const api = {
 
   resetPassword: (email) =>
     req("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ email }) }),
-
+saveSubtitle: (subtitle) =>
+    req("/api/auth/subtitle", { method: "PUT", body: JSON.stringify({ subtitle }) }),
   changePassword: (currentPassword, newPassword) =>
     req("/api/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
 
