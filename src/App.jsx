@@ -10,7 +10,7 @@ const STATUSES = [
   { id:"hold",    label:"보류",        bg:"#f3eeff", color:"#6835c9", border:"#c9b3f5" },
 ];
 
-const INIT_CATS = ["급여 및 4대보험","임직원 관리","규정관리","인사평가","SW관리","교육·행사","정부지원금","복리후생","외부연계"];
+const INIT_CATS = ["급여 및 4대보험","임직원 관리","규정관리","인사평가","SW관리","교육·행사","정부지원금","복리후생","외부연계","기타"];
 
 let nid = 100;
 const today = new Date(); today.setHours(0,0,0,0);
@@ -81,6 +81,7 @@ function TaskCard({ t, isSel, onClick }) {
         <DueBadge due={t.due} status={t.status}/>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+        {t.cat&&<span style={{fontSize:11,color:"#7a7a7a",background:"#f0f0f0",borderRadius:5,padding:"1px 6px"}}>{t.cat}</span>}
         <StatusBadge s={t.status}/>
         <Stars v={t.stars}/>
         {t.waiting_for&&<span style={{fontSize:10,color:"#bf5a00",background:"#fff3e0",padding:"1px 5px",borderRadius:4}}>⏳{t.waiting_for}</span>}
@@ -112,12 +113,13 @@ export default function App() {
   const [modal,           setModal]           = useState(null);
   const [cleanupDays,     setCD]              = useState(30);
   const [archSearch,      setAS]              = useState("");
-  const [newT,            setNewT]            = useState({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""});
+  const [newT,            setNewT]            = useState({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:"",cat:"기타"});
 
   const dragId   = useRef(null);
   const dragOver = useRef(null);
+  const cDragId  = useRef(null);
+  const cDragOver= useRef(null);
 
-  // 인증 확인
   useEffect(()=>{
     if (session.get()) {
       api.me().then(res => {
@@ -130,18 +132,23 @@ export default function App() {
     }
   },[]);
 
-  // 모바일 감지
   useEffect(()=>{
     const fn = () => setMobile(window.innerWidth < 768);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   },[]);
 
-  // 데이터 로드
   useEffect(()=>{
     if (!user) return;
-    api.getTasks().then(data=>{ if(Array.isArray(data)){ setTasks(data.map(t=>({...t,checklist:t.checklist?JSON.parse(t.checklist):[],archived:!!t.archived}))); setOrder(data.map(t=>t.id)); }});
-    api.getCategories().then(data=>{ if(Array.isArray(data)&&data.length>0) setCats(data.map(c=>c.name)); });
+    api.getTasks().then(data=>{
+      if(Array.isArray(data)){
+        setTasks(data.map(t=>({...t,checklist:t.checklist?JSON.parse(t.checklist):[],archived:!!t.archived})));
+        setOrder(data.map(t=>t.id));
+      }
+    });
+    api.getCategories().then(data=>{
+      if(Array.isArray(data)&&data.length>0) setCats(data.map(c=>c.name));
+    });
   },[user]);
 
   if (!authChecked) return (
@@ -155,6 +162,7 @@ export default function App() {
     await api.saveSubtitle(val);
   };
 
+  // ── filtered ──
   const filtered = (()=>{
     let base = sortBy==="manual" ? order.map(id=>tasks.find(t=>t.id===id)).filter(Boolean) : [...tasks];
     if (filterStatus==="active") base=base.filter(x=>x.status!=="done");
@@ -171,7 +179,8 @@ export default function App() {
 
   const archives = (()=>{
     const q=archSearch.toLowerCase();
-    return tasks.filter(t=>t.archived).filter(t=>!q||t.title.includes(q)||(t.memo||"").includes(q)||(t.guide||"").includes(q))
+    return tasks.filter(t=>t.archived)
+      .filter(t=>!q||t.title.includes(q)||(t.memo||"").includes(q)||(t.guide||"").includes(q))
       .sort((a,b)=>(b.completedAt||"").localeCompare(a.completedAt||""));
   })();
 
@@ -186,6 +195,7 @@ export default function App() {
     waiting: tasks.filter(t=>t.status==="waiting").length,
   };
 
+  // ── task actions ──
   const upd = (id, patch) => {
     setTasks(p => p.map(t => t.id===id ? {...t,...patch} : t));
     const task = tasks.find(t=>t.id===id);
@@ -204,6 +214,7 @@ export default function App() {
     setNewT({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:"",cat:"기타"}); setModal(null);
   };
 
+  // ── drag ──
   const onDS=(e,id)=>{ dragId.current=id; e.dataTransfer.effectAllowed="move"; };
   const onDE=(_e,id)=>{ dragOver.current=id; };
   const onDEnd=()=>{
@@ -215,6 +226,7 @@ export default function App() {
     dragId.current=dragOver.current=null;
   };
 
+  // ── category actions (DB 연동) ──
   const catStartEdit = i => { setCatEditIdx(i); setCatEditVal(cats[i]); };
   const catSaveEdit  = i => {
     const v = catEditVal.trim(); if(!v){setCatEditIdx(null);return;}
@@ -222,9 +234,25 @@ export default function App() {
     setCats(p => p.map((c,j) => j===i ? v : c));
     setTasks(p => p.map(t => t.cat===old ? {...t,cat:v} : t));
     setCatEditIdx(null);
+    api.getCategories().then(data=>{
+      const cat = data.find(c=>c.name===old);
+      if(cat) api.updateCategory(cat.id, v);
+    });
   };
-  const catRemove = i => { if(tasks.filter(t=>t.cat===cats[i]).length>0)return; setCats(p=>p.filter((_,j)=>j!==i)); };
-  const catAdd    = () => { const v=newCatName.trim(); if(!v||cats.includes(v))return; setCats(p=>[...p,v]); setNewCatName(""); };
+  const catRemove = i => {
+    if(tasks.filter(t=>t.cat===cats[i]).length>0) return;
+    api.getCategories().then(data=>{
+      const cat = data.find(c=>c.name===cats[i]);
+      if(cat) api.deleteCategory(cat.id);
+    });
+    setCats(p=>p.filter((_,j)=>j!==i));
+  };
+  const catAdd = () => {
+    const v=newCatName.trim(); if(!v||cats.includes(v)) return;
+    setCats(p=>[...p,v]);
+    api.addCategory(v);
+    setNewCatName("");
+  };
 
   const closeModal=()=>{ setModal(null); setCatEditIdx(null); };
 
@@ -299,7 +327,7 @@ export default function App() {
               <thead>
                 <tr style={{fontSize:11,color:"#aaa"}}>
                   {sortBy==="manual"&&<th style={{width:20,fontWeight:400}}/>}
-                  <th style={{textAlign:"left",padding:"0 8px",fontWeight:400,width:110}}>카테고리</th>
+                  <th style={{textAlign:"left",padding:"0 8px",fontWeight:400,width:120}}>카테고리</th>
                   <th style={{textAlign:"left",padding:"0 8px",fontWeight:400}}>업무</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:70}}>중요도</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>상태</th>
@@ -314,7 +342,7 @@ export default function App() {
                       onClick={()=>setSel(isSel?null:t.id)}
                       style={{cursor:"pointer",background:bg,borderLeft:bl,borderRadius:10,transition:"background 0.15s",userSelect:"none"}}>
                       {sortBy==="manual"&&<td style={{padding:"8px 4px 8px 8px",borderRadius:"10px 0 0 10px",color:"#ccc",fontSize:13,cursor:"grab"}}>☰</td>}
-                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:12,color:"#7a7a7a",whiteSpace:"nowrap",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis"}}>{t.cat||"기타"}</td>
+                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:12,color:"#7a7a7a",whiteSpace:"nowrap",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis"}}>{t.cat||"기타"}</td>
                       <td style={{padding:"8px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none"}}>
                         {t.title}
                         {t.waiting_for&&<span style={{fontSize:10,color:"#bf5a00",marginLeft:6,background:"#fff3e0",padding:"1px 5px",borderRadius:4}}>⏳{t.waiting_for}</span>}
@@ -342,10 +370,11 @@ export default function App() {
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {[
-                ["제목",   <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:13,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
-                ["상태",   <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
-                ["기한",   <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
-                ["중요도", <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
+                ["제목",     <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:13,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
+                ["카테고리", <select value={selTask.cat||"기타"} onChange={e=>upd(selTask.id,{cat:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{cats.map(c=><option key={c}>{c}</option>)}</select>],
+                ["상태",     <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
+                ["기한",     <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
+                ["중요도",   <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
               ].map(([label,el])=>(<div key={label}><div style={{fontSize:10,color:"#aaa",marginBottom:3}}>{label}</div>{el}</div>))}
               {selTask.status==="waiting"&&(<div><div style={{fontSize:10,color:"#bf5a00",marginBottom:3}}>회신 대기 담당자</div><input value={selTask.waiting_for||""} placeholder="누구의 회신을 기다리나요?" onChange={e=>upd(selTask.id,{waiting_for:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"1px solid #ffcc80",background:"#fff9f0",color:"#1d1d1f",width:"100%",boxSizing:"border-box"}}/></div>)}
               <div><div style={{fontSize:10,color:"#aaa",marginBottom:3}}>메모</div><textarea value={selTask.memo||""} rows={2} placeholder="참고사항" onChange={e=>upd(selTask.id,{memo:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:7,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}}/></div>
@@ -385,10 +414,11 @@ export default function App() {
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {[
-                ["제목",   <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:14,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
-                ["상태",   <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
-                ["기한",   <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
-                ["중요도", <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
+                ["제목",     <input value={selTask.title} onChange={e=>upd(selTask.id,{title:e.target.value})} style={{fontSize:14,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",fontWeight:500}}/>],
+                ["카테고리", <select value={selTask.cat||"기타"} onChange={e=>upd(selTask.id,{cat:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{cats.map(c=><option key={c}>{c}</option>)}</select>],
+                ["상태",     <select value={selTask.status} onChange={e=>upd(selTask.id,{status:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>],
+                ["기한",     <input type="date" value={selTask.due||""} onChange={e=>upd(selTask.id,{due:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%"}}/>],
+                ["중요도",   <Stars v={selTask.stars} onChange={v=>upd(selTask.id,{stars:v})}/>],
               ].map(([label,el])=>(<div key={label}><div style={{fontSize:11,color:"#aaa",marginBottom:3}}>{label}</div>{el}</div>))}
               {selTask.status==="waiting"&&(<div><div style={{fontSize:11,color:"#bf5a00",marginBottom:3}}>회신 대기 담당자</div><input value={selTask.waiting_for||""} placeholder="누구의 회신을 기다리나요?" onChange={e=>upd(selTask.id,{waiting_for:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"1px solid #ffcc80",background:"#fff9f0",color:"#1d1d1f",width:"100%",boxSizing:"border-box"}}/></div>)}
               <div><div style={{fontSize:11,color:"#aaa",marginBottom:3}}>메모</div><textarea value={selTask.memo||""} rows={2} onChange={e=>upd(selTask.id,{memo:e.target.value})} style={{fontSize:13,padding:"6px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f9f9f9",color:"#1d1d1f",width:"100%",boxSizing:"border-box",resize:"none",fontFamily:"inherit"}}/></div>
@@ -428,7 +458,6 @@ export default function App() {
               <div style={{display:"flex",gap:8}}>
                 <select value={newT.cat} onChange={e=>setNewT(p=>({...p,cat:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>
                   {cats.map(c=><option key={c}>{c}</option>)}
-                  <option>기타</option>
                 </select>
                 <select value={newT.status} onChange={e=>setNewT(p=>({...p,status:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
               </div>
@@ -441,6 +470,41 @@ export default function App() {
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button onClick={closeModal} style={{fontSize:13,background:"none",border:"0.5px solid #d0d0d5",borderRadius:999,padding:"8px 18px",cursor:"pointer",color:"#555"}}>취소</button>
                 <button onClick={addTask} style={{fontSize:13,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"8px 20px",cursor:"pointer",fontWeight:500}}>저장</button>
+              </div>
+            </div>
+          )}
+
+          {modal==="cats"&&(
+            <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"380px",maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:16,fontWeight:600}}>📂 카테고리 관리</div>
+                <button onClick={closeModal} style={{fontSize:18,background:"none",border:"none",color:"#aaa",cursor:"pointer"}}>×</button>
+              </div>
+              <div style={{fontSize:12,color:"#7a7a7a"}}>수정 버튼으로 이름 변경 · 업무 없는 카테고리만 삭제 가능</div>
+              <div style={{overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:4}}>
+                {cats.map((c,i)=>(
+                  <div key={c} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,border:"0.5px solid #e8e8e8",background:"#fafafa"}}>
+                    {catEditIdx===i
+                      ?<input autoFocus value={catEditVal} onChange={e=>setCatEditVal(e.target.value)}
+                          onKeyDown={e=>{if(e.key==="Enter")catSaveEdit(i);if(e.key==="Escape")setCatEditIdx(null);}}
+                          onBlur={()=>catSaveEdit(i)}
+                          style={{flex:1,fontSize:13,padding:"3px 7px",borderRadius:7,border:"1px solid #0066cc",outline:"none",color:"#1d1d1f"}}/>
+                      :<span style={{flex:1,fontSize:13,color:"#1d1d1f"}}>{c}</span>
+                    }
+                    <span style={{fontSize:11,color:"#aaa"}}>{tasks.filter(t=>t.cat===c).length}건</span>
+                    <button onClick={()=>catStartEdit(i)} style={{fontSize:11,color:"#0066cc",background:"none",border:"none",cursor:"pointer",padding:"2px 8px"}}>수정</button>
+                    <button onClick={()=>catRemove(i)}
+                      style={{fontSize:11,color:tasks.filter(t=>t.cat===c).length>0?"#ccc":"#c0392b",background:"none",border:"none",
+                        cursor:tasks.filter(t=>t.cat===c).length>0?"not-allowed":"pointer",padding:"2px 8px"}}
+                      title={tasks.filter(t=>t.cat===c).length>0?"업무가 있는 카테고리는 삭제 불가":""}>삭제</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{borderTop:"0.5px solid #f0f0f0",paddingTop:12,display:"flex",gap:8}}>
+                <input placeholder="새 카테고리 이름" value={newCatName} onChange={e=>setNewCatName(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&catAdd()}
+                  style={{flex:1,fontSize:13,padding:"8px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
+                <button onClick={catAdd} style={{fontSize:13,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"8px 16px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
               </div>
             </div>
           )}
@@ -466,41 +530,6 @@ export default function App() {
             </div>
           )}
 
-          {modal==="cats"&&(
-            <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"380px",maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontSize:16,fontWeight:600}}>📂 카테고리 관리</div>
-                <button onClick={closeModal} style={{fontSize:18,background:"none",border:"none",color:"#aaa",cursor:"pointer"}}>×</button>
-              </div>
-              <div style={{fontSize:12,color:"#7a7a7a"}}>수정 버튼으로 이름 변경 · 업무 없는 카테고리만 삭제 가능</div>
-              <div style={{overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:4}}>
-                {cats.map((c,i)=>(
-                  <div key={c} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,border:"0.5px solid #e8e8e8",background:"#fafafa"}}>
-                    {catEditIdx===i
-                      ? <input autoFocus value={catEditVal} onChange={e=>setCatEditVal(e.target.value)}
-                          onKeyDown={e=>{if(e.key==="Enter")catSaveEdit(i);if(e.key==="Escape")setCatEditIdx(null);}}
-                          onBlur={()=>catSaveEdit(i)}
-                          style={{flex:1,fontSize:13,padding:"3px 7px",borderRadius:7,border:"1px solid #0066cc",outline:"none",color:"#1d1d1f"}}/>
-                      : <span style={{flex:1,fontSize:13,color:"#1d1d1f"}}>{c}</span>
-                    }
-                    <span style={{fontSize:11,color:"#aaa"}}>{tasks.filter(t=>t.cat===c).length}건</span>
-                    <button onClick={()=>catStartEdit(i)} style={{fontSize:11,color:"#0066cc",background:"none",border:"none",cursor:"pointer",padding:"2px 8px"}}>수정</button>
-                    <button onClick={()=>catRemove(i)}
-                      style={{fontSize:11,color:tasks.filter(t=>t.cat===c).length>0?"#ccc":"#c0392b",background:"none",border:"none",
-                        cursor:tasks.filter(t=>t.cat===c).length>0?"not-allowed":"pointer",padding:"2px 8px"}}
-                      title={tasks.filter(t=>t.cat===c).length>0?"업무가 있는 카테고리는 삭제 불가":""}>삭제</button>
-                  </div>
-                ))}
-              </div>
-              <div style={{borderTop:"0.5px solid #f0f0f0",paddingTop:12,display:"flex",gap:8}}>
-                <input placeholder="새 카테고리 이름" value={newCatName} onChange={e=>setNewCatName(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&catAdd()}
-                  style={{flex:1,fontSize:13,padding:"8px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
-                <button onClick={catAdd} style={{fontSize:13,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"8px 16px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
-              </div>
-            </div>
-          )}
-
           {modal==="archive"&&(
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"560px",maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -510,7 +539,7 @@ export default function App() {
               <input placeholder="검색…" value={archSearch} onChange={e=>setAS(e.target.value)} style={{fontSize:13,padding:"8px 12px",borderRadius:10,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
               {archives.length===0?<div style={{fontSize:13,color:"#aaa",textAlign:"center",padding:"24px 0"}}>보관된 업무가 없어요</div>
                 :<div style={{overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
-                  {(()=>{ const byDate={}; archives.forEach(t=>{const d=t.completedAt||"날짜 미정";if(!byDate[d])byDate[d]=[];byDate[d].push(t);}); return Object.entries(byDate).map(([date,items])=>(<div key={date}><div style={{fontSize:11,fontWeight:600,color:"#7a7a7a",padding:"4px 0 6px",borderBottom:"0.5px solid #f0f0f0",marginBottom:6}}>📅 {date}</div>{items.map(t=>(<div key={t.id} style={{background:"#fafafa",border:"0.5px solid #e8e8e8",borderRadius:10,padding:"10px 14px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:500}}>{t.title}</span><Stars v={t.stars}/></div>{t.memo&&<div style={{fontSize:12,color:"#555",marginBottom:4}}>📝 {t.memo}</div>}{t.guide&&<details><summary style={{fontSize:11,color:"#0066cc",cursor:"pointer"}}>처리 방법 보기</summary><pre style={{fontSize:11,color:"#555",marginTop:6,whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.6,background:"#f5f5f7",borderRadius:7,padding:"8px 10px"}}>{t.guide}</pre></details>}</div>))}</div>)); })()}
+                  {(()=>{ const byDate={}; archives.forEach(t=>{const d=t.completedAt||"날짜 미정";if(!byDate[d])byDate[d]=[];byDate[d].push(t);}); return Object.entries(byDate).map(([date,items])=>(<div key={date}><div style={{fontSize:11,fontWeight:600,color:"#7a7a7a",padding:"4px 0 6px",borderBottom:"0.5px solid #f0f0f0",marginBottom:6}}>📅 {date}</div>{items.map(t=>(<div key={t.id} style={{background:"#fafafa",border:"0.5px solid #e8e8e8",borderRadius:10,padding:"10px 14px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:500}}>{t.title} <span style={{fontSize:11,color:"#aaa"}}>{t.cat}</span></span><Stars v={t.stars}/></div>{t.memo&&<div style={{fontSize:12,color:"#555",marginBottom:4}}>📝 {t.memo}</div>}{t.guide&&<details><summary style={{fontSize:11,color:"#0066cc",cursor:"pointer"}}>처리 방법 보기</summary><pre style={{fontSize:11,color:"#555",marginTop:6,whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.6,background:"#f5f5f7",borderRadius:7,padding:"8px 10px"}}>{t.guide}</pre></details>}</div>))}</div>)); })()}
                 </div>}
             </div>
           )}
