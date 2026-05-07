@@ -98,9 +98,9 @@ export default {
       }
      // subtitle 저장
       if (path === "/api/auth/subtitle" && req.method === "PUT") {
-        const { subtitle } = await req.json();
         const u = await getUser(req, db);
         if (!u) return json({ error: "인증 필요" }, 401);
+        const { subtitle } = await req.json();
         await db.prepare("UPDATE users SET subtitle=? WHERE id=?").bind(subtitle, u.id).run();
         return json({ ok: true });
       }
