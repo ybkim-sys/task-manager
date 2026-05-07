@@ -103,7 +103,12 @@ export default function App() {
   const [order,           setOrder]           = useState([]);
   const [sel,             setSel]             = useState(null);
   const [filterStatus,    setFS]              = useState("active");
+  const [filterCat,       setFC]              = useState("전체");
   const [sortBy,          setSB]              = useState("urgency");
+  const [cats,            setCats]            = useState(INIT_CATS);
+  const [catEditIdx,      setCatEditIdx]      = useState(null);
+  const [catEditVal,      setCatEditVal]      = useState("");
+  const [newCatName,      setNewCatName]      = useState("");
   const [modal,           setModal]           = useState(null);
   const [cleanupDays,     setCD]              = useState(30);
   const [archSearch,      setAS]              = useState("");
@@ -136,6 +141,7 @@ export default function App() {
   useEffect(()=>{
     if (!user) return;
     api.getTasks().then(data=>{ if(Array.isArray(data)){ setTasks(data.map(t=>({...t,checklist:t.checklist?JSON.parse(t.checklist):[],archived:!!t.archived}))); setOrder(data.map(t=>t.id)); }});
+    api.getCategories().then(data=>{ if(Array.isArray(data)&&data.length>0) setCats(data.map(c=>c.name)); });
   },[user]);
 
   if (!authChecked) return (
@@ -154,6 +160,7 @@ export default function App() {
     if (filterStatus==="active") base=base.filter(x=>x.status!=="done");
     else if (filterStatus==="done") base=base.filter(x=>x.status==="done");
     else if (filterStatus!=="전체") base=base.filter(x=>x.status===filterStatus);
+    if (filterCat!=="전체") base=base.filter(x=>x.cat===filterCat);
     if (sortBy==="urgency") base=[...base].sort((a,b)=>urgency(b)-urgency(a)||(a.due||"z").localeCompare(b.due||"z"));
     else if (sortBy==="stars") base=[...base].sort((a,b)=>b.stars-a.stars);
     else if (sortBy==="due")   base=[...base].sort((a,b)=>(a.due||"z").localeCompare(b.due||"z"));
@@ -191,10 +198,10 @@ export default function App() {
   const archiveTask = id => { upd(id,{status:"done",archived:true,completedAt:new Date().toISOString().slice(0,10)}); setSel(null); };
   const addTask = () => {
     if (!newT.title.trim()) return;
-    api.addTask({...newT,cat:"일반",guide:"",checklist:"[]",archived:0}).then(res=>{
-      if(res.id){ const t={...newT,cat:"일반",id:res.id,guide:"",checklist:[],archived:false}; setTasks(p=>[...p,t]); setOrder(p=>[...p,res.id]); }
+    api.addTask({...newT, guide:"", checklist:"[]", archived:0}).then(res=>{
+      if(res.id){ const t={...newT, id:res.id, guide:"", checklist:[], archived:false}; setTasks(p=>[...p,t]); setOrder(p=>[...p,res.id]); }
     });
-    setNewT({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:""}); setModal(null);
+    setNewT({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:"",cat:"기타"}); setModal(null);
   };
 
   const onDS=(e,id)=>{ dragId.current=id; e.dataTransfer.effectAllowed="move"; };
@@ -208,7 +215,18 @@ export default function App() {
     dragId.current=dragOver.current=null;
   };
 
-  const closeModal=()=>setModal(null);
+  const catStartEdit = i => { setCatEditIdx(i); setCatEditVal(cats[i]); };
+  const catSaveEdit  = i => {
+    const v = catEditVal.trim(); if(!v){setCatEditIdx(null);return;}
+    const old = cats[i];
+    setCats(p => p.map((c,j) => j===i ? v : c));
+    setTasks(p => p.map(t => t.cat===old ? {...t,cat:v} : t));
+    setCatEditIdx(null);
+  };
+  const catRemove = i => { if(tasks.filter(t=>t.cat===cats[i]).length>0)return; setCats(p=>p.filter((_,j)=>j!==i)); };
+  const catAdd    = () => { const v=newCatName.trim(); if(!v||cats.includes(v))return; setCats(p=>[...p,v]); setNewCatName(""); };
+
+  const closeModal=()=>{ setModal(null); setCatEditIdx(null); };
 
   return (
     <div style={{fontFamily:"-apple-system,'Inter',sans-serif",color:"#1d1d1f",height:"100vh",display:"flex",flexDirection:"column",background:"#f5f5f7",overflow:"hidden"}}>
@@ -240,6 +258,7 @@ export default function App() {
           <button onClick={()=>setModal("add")} style={{fontSize:12,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"5px 12px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
           {!mobile&&<>
             <button onClick={()=>setModal("archive")} style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>🗄 보관함</button>
+            <button onClick={()=>setModal("cats")}    style={{fontSize:11,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>📂 카테고리</button>
             <button onClick={()=>setModal("cleanup")} style={{fontSize:11,background:"#f5f5f7",color:"#7a7a7a",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"5px 10px",cursor:"pointer"}}>🗑 정리</button>
           </>}
           {mobile&&<button onClick={()=>setModal("menu")} style={{fontSize:16,background:"#f5f5f7",border:"0.5px solid #e0e0e0",borderRadius:999,padding:"4px 10px",cursor:"pointer"}}>☰</button>}
@@ -260,6 +279,12 @@ export default function App() {
           <Pill label="기한순" active={sortBy==="due"}     onClick={()=>setSB("due")}/>
           {sortBy==="manual"&&<Pill label="직접정렬 중" active={true} onClick={()=>{}} accent="#6835c9"/>}
         </>}
+        <span style={{width:1,height:14,background:"#e0e0e0",margin:"0 2px",flexShrink:0}}/>
+        <select value={filterCat} onChange={e=>setFC(e.target.value)}
+          style={{fontSize:11,padding:"3px 8px",borderRadius:8,border:"0.5px solid #e0e0e0",background:"#f5f5f7",color:"#555",flexShrink:0}}>
+          <option>전체</option>
+          {cats.map(c=><option key={c}>{c}</option>)}
+        </select>
         <span style={{marginLeft:"auto",fontSize:11,color:"#aaa",flexShrink:0}}>{filtered.length}건</span>
       </div>
 
@@ -274,6 +299,7 @@ export default function App() {
               <thead>
                 <tr style={{fontSize:11,color:"#aaa"}}>
                   {sortBy==="manual"&&<th style={{width:20,fontWeight:400}}/>}
+                  <th style={{textAlign:"left",padding:"0 8px",fontWeight:400,width:110}}>카테고리</th>
                   <th style={{textAlign:"left",padding:"0 8px",fontWeight:400}}>업무</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:70}}>중요도</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>상태</th>
@@ -288,7 +314,8 @@ export default function App() {
                       onClick={()=>setSel(isSel?null:t.id)}
                       style={{cursor:"pointer",background:bg,borderLeft:bl,borderRadius:10,transition:"background 0.15s",userSelect:"none"}}>
                       {sortBy==="manual"&&<td style={{padding:"8px 4px 8px 8px",borderRadius:"10px 0 0 10px",color:"#ccc",fontSize:13,cursor:"grab"}}>☰</td>}
-                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none"}}>
+                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:12,color:"#7a7a7a",whiteSpace:"nowrap",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis"}}>{t.cat||"기타"}</td>
+                      <td style={{padding:"8px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none"}}>
                         {t.title}
                         {t.waiting_for&&<span style={{fontSize:10,color:"#bf5a00",marginLeft:6,background:"#fff3e0",padding:"1px 5px",borderRadius:4}}>⏳{t.waiting_for}</span>}
                         {t.memo&&<span style={{fontSize:10,color:"#aaa",marginLeft:4}}>📝</span>}
@@ -384,8 +411,8 @@ export default function App() {
           {modal==="menu"&&(
             <div style={{background:"#fff",borderRadius:"16px 16px 0 0",padding:20,width:"100%",display:"flex",flexDirection:"column",gap:8}}>
               <div style={{fontSize:15,fontWeight:600,marginBottom:4}}>메뉴</div>
-              {[["🗄 보관함","archive"],["🗑 완료 정리","cleanup"],["긴급순","urgency"],["별점순","stars"],["기한순","due"]].map(([label,val])=>(
-                <button key={val} onClick={()=>{ if(["archive","cleanup"].includes(val)){setModal(val);}else{setSB(val);closeModal();} }}
+              {[["🗄 보관함","archive"],["📂 카테고리","cats"],["🗑 완료 정리","cleanup"],["긴급순","urgency"],["별점순","stars"],["기한순","due"]].map(([label,val])=>(
+                <button key={val} onClick={()=>{ if(["archive","cats","cleanup"].includes(val)){setModal(val);}else{setSB(val);closeModal();} }}
                   style={{fontSize:14,padding:"12px 16px",borderRadius:10,border:"0.5px solid #e0e0e0",background:sortBy===val?"#e8f1fb":"#fafafa",color:sortBy===val?"#0066cc":"#1d1d1f",textAlign:"left",cursor:"pointer"}}>
                   {label}
                 </button>
@@ -398,7 +425,13 @@ export default function App() {
             <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"360px",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{fontSize:16,fontWeight:600}}>새 업무 추가</div>
               <input placeholder="업무 제목" value={newT.title} onChange={e=>setNewT(p=>({...p,title:e.target.value}))} style={{fontSize:13,padding:"10px 12px",borderRadius:10,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
-              <select value={newT.status} onChange={e=>setNewT(p=>({...p,status:e.target.value}))} style={{fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
+              <div style={{display:"flex",gap:8}}>
+                <select value={newT.cat} onChange={e=>setNewT(p=>({...p,cat:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>
+                  {cats.map(c=><option key={c}>{c}</option>)}
+                  <option>기타</option>
+                </select>
+                <select value={newT.status} onChange={e=>setNewT(p=>({...p,status:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
+              </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input type="date" value={newT.due} onChange={e=>setNewT(p=>({...p,due:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}/>
                 <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,color:"#aaa"}}>중요도</span><Stars v={newT.stars} onChange={v=>setNewT(p=>({...p,stars:v}))}/></div>
@@ -429,6 +462,41 @@ export default function App() {
                   <button onClick={closeModal} style={{fontSize:12,background:"none",border:"0.5px solid #d0d0d5",borderRadius:999,padding:"6px 14px",cursor:"pointer",color:"#555"}}>취소</button>
                   <button disabled={cleanupTargets.length===0} onClick={()=>{const ids=new Set(cleanupTargets.map(t=>t.id));setTasks(p=>p.filter(t=>!ids.has(t.id)));setOrder(p=>p.filter(x=>!ids.has(x)));closeModal();}} style={{fontSize:12,background:cleanupTargets.length===0?"#e0e0e0":"#c0392b",color:"#fff",border:"none",borderRadius:999,padding:"6px 16px",cursor:cleanupTargets.length===0?"default":"pointer",fontWeight:500}}>삭제</button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {modal==="cats"&&(
+            <div style={{background:"#fff",borderRadius:mobile?"16px 16px 0 0":18,padding:24,width:mobile?"100%":"380px",maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:16,fontWeight:600}}>📂 카테고리 관리</div>
+                <button onClick={closeModal} style={{fontSize:18,background:"none",border:"none",color:"#aaa",cursor:"pointer"}}>×</button>
+              </div>
+              <div style={{fontSize:12,color:"#7a7a7a"}}>수정 버튼으로 이름 변경 · 업무 없는 카테고리만 삭제 가능</div>
+              <div style={{overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:4}}>
+                {cats.map((c,i)=>(
+                  <div key={c} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,border:"0.5px solid #e8e8e8",background:"#fafafa"}}>
+                    {catEditIdx===i
+                      ? <input autoFocus value={catEditVal} onChange={e=>setCatEditVal(e.target.value)}
+                          onKeyDown={e=>{if(e.key==="Enter")catSaveEdit(i);if(e.key==="Escape")setCatEditIdx(null);}}
+                          onBlur={()=>catSaveEdit(i)}
+                          style={{flex:1,fontSize:13,padding:"3px 7px",borderRadius:7,border:"1px solid #0066cc",outline:"none",color:"#1d1d1f"}}/>
+                      : <span style={{flex:1,fontSize:13,color:"#1d1d1f"}}>{c}</span>
+                    }
+                    <span style={{fontSize:11,color:"#aaa"}}>{tasks.filter(t=>t.cat===c).length}건</span>
+                    <button onClick={()=>catStartEdit(i)} style={{fontSize:11,color:"#0066cc",background:"none",border:"none",cursor:"pointer",padding:"2px 8px"}}>수정</button>
+                    <button onClick={()=>catRemove(i)}
+                      style={{fontSize:11,color:tasks.filter(t=>t.cat===c).length>0?"#ccc":"#c0392b",background:"none",border:"none",
+                        cursor:tasks.filter(t=>t.cat===c).length>0?"not-allowed":"pointer",padding:"2px 8px"}}
+                      title={tasks.filter(t=>t.cat===c).length>0?"업무가 있는 카테고리는 삭제 불가":""}>삭제</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{borderTop:"0.5px solid #f0f0f0",paddingTop:12,display:"flex",gap:8}}>
+                <input placeholder="새 카테고리 이름" value={newCatName} onChange={e=>setNewCatName(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&catAdd()}
+                  style={{flex:1,fontSize:13,padding:"8px 10px",borderRadius:8,border:"0.5px solid #e0e0e0",outline:"none",color:"#1d1d1f"}}/>
+                <button onClick={catAdd} style={{fontSize:13,background:"#0066cc",color:"#fff",border:"none",borderRadius:999,padding:"8px 16px",cursor:"pointer",fontWeight:500}}>+ 추가</button>
               </div>
             </div>
           )}
