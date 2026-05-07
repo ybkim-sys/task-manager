@@ -156,27 +156,42 @@ export default {
       // ── Categories ────────────────────────────────────
 
       if (path === "/api/categories" && req.method === "GET") {
-        const { results } = await db.prepare("SELECT * FROM categories ORDER BY sort_order").all();
+        const { results } = await db.prepare(
+          "SELECT * FROM categories WHERE user_id=? ORDER BY sort_order"
+        ).bind(user.id).all();
+        // 카테고리 없으면 기본 카테고리 생성
+        if (results.length === 0) {
+          const defaults = ["급여 및 4대보험","임직원 관리","규정관리","인사평가","SW관리","교육·행사","정부지원금","복리후생","외부연계","기타"];
+          for (let i=0; i<defaults.length; i++) {
+            await db.prepare("INSERT INTO categories (name,sort_order,user_id) VALUES (?,?,?)")
+              .bind(defaults[i], i+1, user.id).run();
+          }
+          const { results: newResults } = await db.prepare(
+            "SELECT * FROM categories WHERE user_id=? ORDER BY sort_order"
+          ).bind(user.id).all();
+          return json(newResults);
+        }
         return json(results);
       }
 
       if (path === "/api/categories" && req.method === "POST") {
         const { name } = await req.json();
-        const max = await db.prepare("SELECT MAX(sort_order) as m FROM categories").first();
-        await db.prepare("INSERT INTO categories (name,sort_order) VALUES (?,?)").bind(name,(max.m||0)+1).run();
+        const max = await db.prepare("SELECT MAX(sort_order) as m FROM categories WHERE user_id=?").bind(user.id).first();
+        await db.prepare("INSERT INTO categories (name,sort_order,user_id) VALUES (?,?,?)")
+          .bind(name,(max.m||0)+1,user.id).run();
         return json({ ok: true });
       }
 
       if (path.startsWith("/api/categories/") && req.method === "PUT") {
         const id = path.split("/").pop();
         const { name } = await req.json();
-        await db.prepare("UPDATE categories SET name=? WHERE id=?").bind(name, id).run();
+        await db.prepare("UPDATE categories SET name=? WHERE id=? AND user_id=?").bind(name, id, user.id).run();
         return json({ ok: true });
       }
 
       if (path.startsWith("/api/categories/") && req.method === "DELETE") {
         const id = path.split("/").pop();
-        await db.prepare("DELETE FROM categories WHERE id=?").bind(id).run();
+        await db.prepare("DELETE FROM categories WHERE id=? AND user_id=?").bind(id, user.id).run();
         return json({ ok: true });
       }
 
