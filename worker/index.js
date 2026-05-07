@@ -96,7 +96,14 @@ export default {
         await db.prepare("UPDATE users SET password_hash=? WHERE email=?").bind(hash, email).run();
         return json({ ok: true, tempPassword: tempPw });
       }
-
+     // subtitle 저장
+      if (path === "/api/auth/subtitle" && req.method === "PUT") {
+        const { subtitle } = await req.json();
+        const u = await getUser(req, db);
+        if (!u) return json({ error: "인증 필요" }, 401);
+        await db.prepare("UPDATE users SET subtitle=? WHERE id=?").bind(subtitle, u.id).run();
+        return json({ ok: true });
+      }
       // 비밀번호 변경
       if (path === "/api/auth/change-password" && req.method === "POST") {
         const user = await getUser(req, db);
