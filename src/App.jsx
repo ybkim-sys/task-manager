@@ -103,9 +103,11 @@ export default function App() {
   const [tasks,           setTasks]           = useState([]);
   const [order,           setOrder]           = useState([]);
   const [sel,             setSel]             = useState(null);
-  const [filterStatus,    setFS]              = useState("active");
+  const [filterStatus,    setFS]              = useState("todo");
   const [filterCat,       setFC]              = useState("전체");
   const [sortBy,          setSB]              = useState("urgency");
+  const [catSort,         setCatSort]         = useState("asc"); // 카테고리 정렬
+  const [titleSort,       setTitleSort]       = useState("asc"); // 업무 정렬
   const [cats,            setCats]            = useState(INIT_CATS);
   const [catEditIdx,      setCatEditIdx]      = useState(null);
   const [catEditVal,      setCatEditVal]      = useState("");
@@ -165,13 +167,21 @@ export default function App() {
   // ── filtered ──
   const filtered = (()=>{
     let base = sortBy==="manual" ? order.map(id=>tasks.find(t=>t.id===id)).filter(Boolean) : [...tasks];
-    if (filterStatus==="active") base=base.filter(x=>x.status!=="done");
+    if (filterStatus==="todo") base=base.filter(x=>x.status!=="done");
     else if (filterStatus==="done") base=base.filter(x=>x.status==="done");
     else if (filterStatus!=="전체") base=base.filter(x=>x.status===filterStatus);
     if (filterCat!=="전체") base=base.filter(x=>x.cat===filterCat);
     if (sortBy==="urgency") base=[...base].sort((a,b)=>urgency(b)-urgency(a)||(a.due||"z").localeCompare(b.due||"z"));
     else if (sortBy==="stars") base=[...base].sort((a,b)=>b.stars-a.stars);
     else if (sortBy==="due")   base=[...base].sort((a,b)=>(a.due||"z").localeCompare(b.due||"z"));
+    // 카테고리 정렬 (상위) → 업무 제목 정렬 (하위)
+    base=[...base].sort((a,b)=>{
+      const catA=(a.cat||"기타"), catB=(b.cat||"기타");
+      const catCmp = catA.localeCompare(catB,"ko");
+      if (catCmp!==0) return catSort==="asc" ? catCmp : -catCmp;
+      const titleCmp = (a.title||"").localeCompare(b.title||"","ko");
+      return titleSort==="asc" ? titleCmp : -titleCmp;
+    });
     return base;
   })();
 
@@ -254,7 +264,15 @@ export default function App() {
     setNewCatName("");
   };
 
-  const closeModal=()=>{ setModal(null); setCatEditIdx(null); };
+  // 체크리스트 변경 시 즉시 DB 저장
+  const updChecklist = (id, checklist) => {
+    setTasks(p => p.map(t => t.id===id ? {...t, checklist} : t));
+    const task = tasks.find(t=>t.id===id);
+    if (task) {
+      const updated = {...task, checklist};
+      api.updateTask(id, {...updated, checklist:JSON.stringify(checklist), archived:updated.archived?1:0});
+    }
+  };
 
   return (
     <div style={{fontFamily:"-apple-system,'Inter',sans-serif",color:"#1d1d1f",height:"100vh",display:"flex",flexDirection:"column",background:"#f5f5f7",overflow:"hidden"}}>
@@ -262,7 +280,7 @@ export default function App() {
       {/* Header */}
       <div style={{background:"#fff",borderBottom:"0.5px solid #e0e0e0",padding:mobile?"8px 12px":"10px 16px",display:"flex",alignItems:"center",gap:8,flexShrink:0,flexWrap:"wrap"}}>
         <div style={{flex:1,minWidth:100}}>
-          <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>GC업무관리툴 <span style={{fontSize:10,color:"#aaa",fontWeight:400}}>made by ybkim</span></span>
+          <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>업무 관리</span>
           {!mobile&&(
             editingSubtitle
               ? <input autoFocus value={subtitleDraft} onChange={e=>setSubtitleDraft(e.target.value)}
@@ -271,7 +289,7 @@ export default function App() {
                   style={{fontSize:11,color:"#1d1d1f",marginLeft:10,border:"0.5px solid #0066cc",borderRadius:6,padding:"2px 8px",outline:"none",width:280}}/>
               : <span onClick={()=>{setSubtitleDraft(subtitle);setEditingSubtitle(true);}} title="클릭하여 수정"
                   style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>
-                  {subtitle||"오늘도 화이팅입니다. 아자 아자~😍🔅🫰💕🎉👈🤣"}
+                  {subtitle||"✏️ 나만의 문구를 입력해보세요"} ✏️
                 </span>
           )}
         </div>
@@ -295,9 +313,10 @@ export default function App() {
 
       {/* Filters */}
       <div style={{background:"#fff",borderBottom:"0.5px solid #e0e0e0",padding:mobile?"6px 12px":"6px 16px",display:"flex",gap:5,alignItems:"center",overflowX:"auto",flexShrink:0}}>
-        <Pill label="진행 중"  active={filterStatus==="active"}  onClick={()=>setFS("active")}/>
+        <Pill label="TO DO"    active={filterStatus==="todo"}    onClick={()=>setFS("todo")}/>
         <Pill label="전체"     active={filterStatus==="전체"}    onClick={()=>setFS("전체")}/>
-        <Pill label="할 일"    active={filterStatus==="todo"}    onClick={()=>setFS("todo")}/>
+        <Pill label="할 일"    active={filterStatus==="할일"}    onClick={()=>setFS("할일")}/>
+        <Pill label="진행 중"  active={filterStatus==="doing"}   onClick={()=>setFS("doing")}/>
         <Pill label="회신대기" active={filterStatus==="waiting"} onClick={()=>setFS("waiting")} accent="#bf5a00"/>
         <Pill label="완료"     active={filterStatus==="done"}    onClick={()=>setFS("done")} accent="#1a7f37"/>
         {!mobile&&<>
@@ -327,8 +346,8 @@ export default function App() {
               <thead>
                 <tr style={{fontSize:11,color:"#aaa"}}>
                   {sortBy==="manual"&&<th style={{width:20,fontWeight:400}}/>}
-                  <th style={{textAlign:"left",padding:"0 8px",fontWeight:400,width:120}}>카테고리</th>
-                  <th style={{textAlign:"left",padding:"0 8px",fontWeight:400}}>업무</th>
+                  <th onClick={()=>setCatSort(p=>p==="asc"?"desc":"asc")} style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:120,cursor:"pointer",userSelect:"none"}}>카테고리 {catSort==="asc"?"↑":"↓"}</th>
+                  <th onClick={()=>setTitleSort(p=>p==="asc"?"desc":"asc")} style={{textAlign:"center",padding:"0 8px",fontWeight:400,cursor:"pointer",userSelect:"none"}}>업무 {titleSort==="asc"?"↑":"↓"}</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:70}}>중요도</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>상태</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>기한</th>
@@ -342,13 +361,14 @@ export default function App() {
                       onClick={()=>setSel(isSel?null:t.id)}
                       style={{cursor:"pointer",background:bg,borderLeft:bl,borderRadius:10,transition:"background 0.15s",userSelect:"none"}}>
                       {sortBy==="manual"&&<td style={{padding:"8px 4px 8px 8px",borderRadius:"10px 0 0 10px",color:"#ccc",fontSize:13,cursor:"grab"}}>☰</td>}
-                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:12,color:"#7a7a7a",whiteSpace:"nowrap",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis"}}>{t.cat||"기타"}</td>
-                      <td style={{padding:"8px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none"}}>
-                        {t.title}
+                      <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:12,color:"#7a7a7a",textAlign:"center",whiteSpace:"nowrap",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis"}}>{t.cat||"기타"}</td>
+                      <td style={{padding:"8px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none",textAlign:"center"}}>
+                        <div>{t.title}
                         {t.waiting_for&&<span style={{fontSize:10,color:"#bf5a00",marginLeft:6,background:"#fff3e0",padding:"1px 5px",borderRadius:4}}>⏳{t.waiting_for}</span>}
-                        {t.memo&&<span style={{fontSize:10,color:"#aaa",marginLeft:4}}>📝</span>}
                         {(t.checklist||[]).length>0&&<span style={{fontSize:10,color:"#aaa",marginLeft:4}}>[{(t.checklist||[]).filter(x=>x.done).length}/{(t.checklist||[]).length}]</span>}
                         {t.archived&&<span style={{fontSize:10,color:"#1a7f37",marginLeft:4}}>📦</span>}
+                        </div>
+                        {t.memo&&<div style={{fontSize:11,color:"#aaa",marginTop:2}}>{t.memo.length>20?t.memo.slice(0,20)+"…":t.memo}</div>}
                       </td>
                       <td style={{padding:"8px",textAlign:"center"}}><Stars v={t.stars}/></td>
                       <td style={{padding:"8px 4px",textAlign:"center"}}><StatusBadge s={t.status}/></td>
@@ -386,14 +406,14 @@ export default function App() {
             <div style={{borderTop:"0.5px solid #f0f0f0",paddingTop:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                 <div style={{fontSize:11,fontWeight:500,color:"#1d1d1f"}}>세부 체크리스트</div>
-                <button onClick={()=>upd(selTask.id,{checklist:[...(selTask.checklist||[]),{id:Date.now(),text:"",done:false}]})} style={{fontSize:11,color:"#0066cc",background:"none",border:"none",cursor:"pointer",padding:0}}>+ 추가</button>
+                <button onClick={()=>updChecklist(selTask.id,[...(selTask.checklist||[]),{id:Date.now(),text:"",done:false}])} style={{fontSize:11,color:"#0066cc",background:"none",border:"none",cursor:"pointer",padding:0}}>+ 추가</button>
               </div>
               {(selTask.checklist||[]).length===0?<div style={{fontSize:11,color:"#bbb"}}>세부 단계를 추가해보세요</div>
                 :(selTask.checklist||[]).map((item,i)=>(
                 <div key={item.id} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
-                  <input type="checkbox" checked={item.done} onChange={e=>{const cl=[...(selTask.checklist||[])];cl[i]={...cl[i],done:e.target.checked};upd(selTask.id,{checklist:cl});}} style={{accentColor:"#0066cc",flexShrink:0}}/>
-                  <input value={item.text} placeholder="세부 항목" onChange={e=>{const cl=[...(selTask.checklist||[])];cl[i]={...cl[i],text:e.target.value};upd(selTask.id,{checklist:cl});}} style={{flex:1,fontSize:12,padding:"3px 6px",borderRadius:6,border:"0.5px solid #e0e0e0",background:item.done?"#f5f5f7":"#fff",color:item.done?"#aaa":"#1d1d1f",textDecoration:item.done?"line-through":"none",outline:"none"}}/>
-                  <button onClick={()=>upd(selTask.id,{checklist:(selTask.checklist||[]).filter((_,j)=>j!==i)})} style={{fontSize:14,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:0}}>×</button>
+                  <input type="checkbox" checked={item.done} onChange={e=>{const cl=[...(selTask.checklist||[])];cl[i]={...cl[i],done:e.target.checked};updChecklist(selTask.id,cl);}} style={{accentColor:"#0066cc",flexShrink:0}}/>
+                  <input value={item.text} placeholder="세부 항목" onChange={e=>{const cl=[...(selTask.checklist||[])];cl[i]={...cl[i],text:e.target.value};updChecklist(selTask.id,cl);}} style={{flex:1,fontSize:12,padding:"3px 6px",borderRadius:6,border:"0.5px solid #e0e0e0",background:item.done?"#f5f5f7":"#fff",color:item.done?"#aaa":"#1d1d1f",textDecoration:item.done?"line-through":"none",outline:"none"}}/>
+                  <button onClick={()=>updChecklist(selTask.id,(selTask.checklist||[]).filter((_,j)=>j!==i))} style={{fontSize:14,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:0}}>×</button>
                 </div>))}
               {(selTask.checklist||[]).length>0&&<div style={{fontSize:10,color:"#aaa",marginTop:4}}>{(selTask.checklist||[]).filter(x=>x.done).length}/{(selTask.checklist||[]).length} 완료</div>}
             </div>
