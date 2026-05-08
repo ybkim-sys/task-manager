@@ -58,4 +58,8 @@ saveSubtitle: (subtitle) =>
   addFile: file => req("/api/files", { method: "POST", body: JSON.stringify(file) }),
   updateFile: (id, f) => req(`/api/files/${id}`, { method: "PUT", body: JSON.stringify(f) }),
   deleteFile: id => req(`/api/files/${id}`, { method: "DELETE" }),
+  // ── Memos ─────────────────────────────────────────
+  getMemos:   ()        => req("/api/memos"),
+  addMemo:    content   => req("/api/memos", { method:"POST", body:JSON.stringify({ content }) }),
+  deleteMemo: id        => req(`/api/memos/${id}`, { method:"DELETE" }),
 };
