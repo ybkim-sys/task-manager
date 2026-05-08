@@ -488,7 +488,12 @@ export default function App() {
                 <select value={newT.status} onChange={e=>setNewT(p=>({...p,status:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <input type="date" value={newT.due} onChange={e=>setNewT(p=>({...p,due:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:"#fff",color:"#1d1d1f"}}/>
+                <div style={{display:"flex",alignItems:"center",gap:6,flex:1}}>
+  <input type="date" value={newT.due} disabled={newT.nodue} onChange={e=>setNewT(p=>({...p,due:e.target.value}))} style={{flex:1,fontSize:12,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",background:newT.nodue?"#f5f5f7":"#fff",color:"#1d1d1f"}}/>
+  <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#7a7a7a",whiteSpace:"nowrap",cursor:"pointer"}}>
+    <input type="checkbox" checked={!!newT.nodue} onChange={e=>setNewT(p=>({...p,nodue:e.target.checked,due:e.target.checked?"":p.due}))} style={{accentColor:"#0066cc"}}/>기한없음
+  </label>
+</div>
                 <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,color:"#aaa"}}>중요도</span><Stars v={newT.stars} onChange={v=>setNewT(p=>({...p,stars:v}))}/></div>
               </div>
               {newT.status==="waiting"&&<input placeholder="회신 대기 담당자" value={newT.waiting_for} onChange={e=>setNewT(p=>({...p,waiting_for:e.target.value}))} style={{fontSize:12,padding:"8px 10px",borderRadius:10,border:"1px solid #ffcc80",background:"#fff9f0",color:"#1d1d1f",outline:"none"}}/>}
