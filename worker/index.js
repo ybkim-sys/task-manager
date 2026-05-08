@@ -226,7 +226,28 @@ export default {
         await db.prepare("DELETE FROM files WHERE id=? AND user_id=?").bind(id, user.id).run();
         return json({ ok: true });
       }
+// ── Memos ─────────────────────────────────────────
 
+      if (path === "/api/memos" && req.method === "GET") {
+        const { results } = await db.prepare(
+          "SELECT * FROM memos WHERE user_id=? ORDER BY created_at DESC"
+        ).bind(user.id).all();
+        return json(results);
+      }
+
+      if (path === "/api/memos" && req.method === "POST") {
+        const { content } = await req.json();
+        const { meta } = await db.prepare(
+          "INSERT INTO memos (user_id, content) VALUES (?,?)"
+        ).bind(user.id, content).run();
+        return json({ id: meta.last_row_id });
+      }
+
+      if (path.startsWith("/api/memos/") && req.method === "DELETE") {
+        const id = path.split("/").pop();
+        await db.prepare("DELETE FROM memos WHERE id=? AND user_id=?").bind(id, user.id).run();
+        return json({ ok: true });
+      }
       return json({ error: "Not found" }, 404);
     } catch (e) {
       return json({ error: e.message }, 500);
