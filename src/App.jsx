@@ -277,6 +277,8 @@ export default function App() {
     }
   };
 
+  const closeModal = () => { setModal(null); setCatEditIdx(null); };
+  
   return (
     <div style={{fontFamily:"-apple-system,'Inter',sans-serif",color:"#1d1d1f",height:"100vh",display:"flex",flexDirection:"column",background:"#f5f5f7",overflow:"hidden"}}>
 
