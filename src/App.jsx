@@ -115,8 +115,11 @@ export default function App() {
   const [modal,           setModal]           = useState(null);
   const [cleanupDays,     setCD]              = useState(30);
   const [archSearch,      setAS]              = useState("");
-  const [newT,            setNewT]            = useState({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:"",cat:"기타"});
+  const [newT,            setNewT]            = useState({title:"",due:0"",stars:3,status:"todo",memo:"",waiting_for:"",cat:"기타"});
 
+  const [memos,        setMemos]        = useState([]);
+  const [memoInput,    setMemoInput]    = useState("");
+  const [memoOpen,     setMemoOpen]     = useState(false);
   const dragId   = useRef(null);
   const dragOver = useRef(null);
   const cDragId  = useRef(null);
@@ -150,7 +153,11 @@ export default function App() {
     });
     api.getCategories().then(data=>{
       if(Array.isArray(data)&&data.length>0) setCats(data.map(c=>c.name));
+    });api.getCategories().then(data=>{
+      if(Array.isArray(data)&&data.length>0) setCats(data.map(c=>c.name));
     });
+    api.getMemos().then(data=>{ if(Array.isArray(data)) setMemos(data); });  // ← 여기 추가
+  },[user]);
   },[user]);
 
   if (!authChecked) return (
@@ -278,7 +285,15 @@ export default function App() {
   };
 
   const closeModal = () => { setModal(null); setCatEditIdx(null); };
-  
+
+  const addMemo = () => {
+    if (!memoInput.trim()) return;
+    api.addMemo(memoInput.trim()).then(res=>{
+      if(res.id) setMemos(p=>[{id:res.id, content:memoInput.trim(), created_at:new Date().toLocaleString("ko-KR")}, ...p]);
+    });
+    setMemoInput(""); setMemoOpen(false);
+  };
+  const deleteMemo = id => { api.deleteMemo(id); setMemos(p=>p.filter(m=>m.id!==id)); };
   return (
     <div style={{fontFamily:"-apple-system,'Inter',sans-serif",color:"#1d1d1f",height:"100vh",display:"flex",flexDirection:"column",background:"#f5f5f7",overflow:"hidden"}}>
 
@@ -460,6 +475,40 @@ export default function App() {
       </div>
 
       {/* Modals */}
+      {/* 하단 메모 */}
+      <div style={{background:"#fff",borderTop:"0.5px solid #e0e0e0",flexShrink:0}}>
+        {memos.length>0&&(
+          <div style={{maxHeight:160,overflowY:"auto",padding:"8px 16px",display:"flex",flexDirection:"column",gap:6}}>
+            {memos.map(m=>(
+              <div key={m.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"6px 10px",background:"#fffde7",borderRadius:8,border:"0.5px solid #fff176"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,color:"#1d1d1f",lineHeight:1.5}}>{m.content}</div>
+                  <div style={{fontSize:10,color:"#aaa",marginTop:2}}>{m.created_at}</div>
+                </div>
+                <button onClick={()=>deleteMemo(m.id)} style={{fontSize:14,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {memoOpen&&(
+          <div style={{padding:"8px 16px",display:"flex",gap:8,borderTop:"0.5px solid #f0f0f0"}}>
+            <textarea autoFocus value={memoInput} onChange={e=>setMemoInput(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addMemo();} }}
+              placeholder="메모 내용 입력 후 Enter (줄바꿈은 Shift+Enter)"
+              rows={2}
+              style={{flex:1,fontSize:13,padding:"8px 10px",borderRadius:10,border:"0.5px solid #e0e0e0",resize:"none",fontFamily:"inherit",outline:"none",color:"#1d1d1f"}}/>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              <button onClick={addMemo} style={{fontSize:12,background:"#0066cc",color:"#fff",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontWeight:500}}>저장</button>
+              <button onClick={()=>{setMemoOpen(false);setMemoInput("");}} style={{fontSize:12,background:"#f5f5f7",color:"#555",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"6px 12px",cursor:"pointer"}}>취소</button>
+            </div>
+          </div>
+        )}
+        <div style={{padding:"6px 16px"}}>
+          <button onClick={()=>setMemoOpen(p=>!p)} style={{fontSize:12,color:"#0066cc",background:"none",border:"none",cursor:"pointer",padding:"4px 0",fontWeight:500}}>
+            {memoOpen ? "✕ 닫기" : "+ 메모하기"}
+          </button>
+        </div>
+      </div>
       {modal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:mobile?"flex-end":"center",justifyContent:"center",zIndex:100}}
           onClick={e=>{if(e.target===e.currentTarget)closeModal();}}>
