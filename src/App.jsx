@@ -285,7 +285,7 @@ export default function App() {
       {/* Header */}
       <div style={{background:"#fff",borderBottom:"0.5px solid #e0e0e0",padding:mobile?"8px 12px":"10px 16px",display:"flex",alignItems:"center",gap:8,flexShrink:0,flexWrap:"wrap"}}>
         <div style={{flex:1,minWidth:100}}>
-          <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>업무 관리</span>
+          <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>GC업무관리툴 <span style={{fontSize:10,color:"#aaa",fontWeight:400}}>made by ybkim</span></span>
           {!mobile&&(
             editingSubtitle
               ? <input autoFocus value={subtitleDraft} onChange={e=>setSubtitleDraft(e.target.value)}
