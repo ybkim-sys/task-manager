@@ -285,7 +285,7 @@ export default function App() {
       {/* Header */}
       <div style={{background:"#fff",borderBottom:"0.5px solid #e0e0e0",padding:mobile?"8px 12px":"10px 16px",display:"flex",alignItems:"center",gap:8,flexShrink:0,flexWrap:"wrap"}}>
         <div style={{flex:1,minWidth:100}}>
-          <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>GC업무관리툴 <span style={{fontSize:10,color:"#aaa",fontWeight:400}}>made by ybkim</span></span>
+          <span style={{fontSize:mobile?14:16,fontWeight:600,letterSpacing:"-0.3px"}}>GC 업무관리툴(MADE BY YBKIM) <span style={{fontSize:10,color:"#aaa",fontWeight:400}}>made by ybkim</span></span>
           {!mobile&&(
             editingSubtitle
               ? <input autoFocus value={subtitleDraft} onChange={e=>setSubtitleDraft(e.target.value)}
@@ -294,7 +294,7 @@ export default function App() {
                   style={{fontSize:11,color:"#1d1d1f",marginLeft:10,border:"0.5px solid #0066cc",borderRadius:6,padding:"2px 8px",outline:"none",width:280}}/>
               : <span onClick={()=>{setSubtitleDraft(subtitle);setEditingSubtitle(true);}} title="클릭하여 수정"
                   style={{fontSize:11,color:"#7a7a7a",marginLeft:10,cursor:"pointer"}}>
-                  {subtitle||"✏️ 나만의 문구를 입력해보세요"} ✏️
+                  {subtitle||"지씨 여러분 화이팅입니다~😍💕😘👌👍😁😂🤣"} ✏️
                 </span>
           )}
         </div>
