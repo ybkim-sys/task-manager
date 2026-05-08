@@ -106,8 +106,8 @@ export default function App() {
   const [filterStatus,    setFS]              = useState("todo");
   const [filterCat,       setFC]              = useState("전체");
   const [sortBy,          setSB]              = useState("urgency");
-  const [catSort,         setCatSort]         = useState("asc"); // 카테고리 정렬
-  const [titleSort,       setTitleSort]       = useState("asc"); // 업무 정렬
+  const [catSort,         setCatSort]         = useState("none");
+  const [titleSort,       setTitleSort]       = useState("none");
   const [cats,            setCats]            = useState(INIT_CATS);
   const [catEditIdx,      setCatEditIdx]      = useState(null);
   const [catEditVal,      setCatEditVal]      = useState("");
@@ -174,14 +174,17 @@ export default function App() {
     if (sortBy==="urgency") base=[...base].sort((a,b)=>urgency(b)-urgency(a)||(a.due||"z").localeCompare(b.due||"z"));
     else if (sortBy==="stars") base=[...base].sort((a,b)=>b.stars-a.stars);
     else if (sortBy==="due")   base=[...base].sort((a,b)=>(a.due||"z").localeCompare(b.due||"z"));
-    // 카테고리 정렬 (상위) → 업무 제목 정렬 (하위)
-    base=[...base].sort((a,b)=>{
-      const catA=(a.cat||"기타"), catB=(b.cat||"기타");
-      const catCmp = catA.localeCompare(catB,"ko");
-      if (catCmp!==0) return catSort==="asc" ? catCmp : -catCmp;
-      const titleCmp = (a.title||"").localeCompare(b.title||"","ko");
-      return titleSort==="asc" ? titleCmp : -titleCmp;
-    });
+    // 카테고리/업무 오름차순 내림차순 (긴급순 등 다른 정렬 선택시 비활성)
+    if (catSort!=="none") {
+      base=[...base].sort((a,b)=>{
+        const catA=(a.cat||"기타"), catB=(b.cat||"기타");
+        const catCmp = catA.localeCompare(catB,"ko");
+        if (catCmp!==0) return catSort==="asc" ? catCmp : -catCmp;
+        if (titleSort==="none") return 0;
+        const titleCmp = (a.title||"").localeCompare(b.title||"","ko");
+        return titleSort==="asc" ? titleCmp : -titleCmp;
+      });
+    }
     return base;
   })();
 
@@ -314,17 +317,14 @@ export default function App() {
       {/* Filters */}
       <div style={{background:"#fff",borderBottom:"0.5px solid #e0e0e0",padding:mobile?"6px 12px":"6px 16px",display:"flex",gap:5,alignItems:"center",overflowX:"auto",flexShrink:0}}>
         <Pill label="TO DO"    active={filterStatus==="todo"}    onClick={()=>setFS("todo")}/>
-        <Pill label="전체"     active={filterStatus==="전체"}    onClick={()=>setFS("전체")}/>
-        <Pill label="할 일"    active={filterStatus==="할일"}    onClick={()=>setFS("할일")}/>
-        <Pill label="진행 중"  active={filterStatus==="doing"}   onClick={()=>setFS("doing")}/>
-        <Pill label="회신대기" active={filterStatus==="waiting"} onClick={()=>setFS("waiting")} accent="#bf5a00"/>
         <Pill label="완료"     active={filterStatus==="done"}    onClick={()=>setFS("done")} accent="#1a7f37"/>
+        <Pill label="전체"     active={filterStatus==="전체"}    onClick={()=>setFS("전체")}/>
         {!mobile&&<>
           <span style={{width:1,height:14,background:"#e0e0e0",margin:"0 2px",flexShrink:0}}/>
-          <Pill label="긴급순" active={sortBy==="urgency"} onClick={()=>setSB("urgency")}/>
-          <Pill label="별점순" active={sortBy==="stars"}   onClick={()=>setSB("stars")}/>
-          <Pill label="기한순" active={sortBy==="due"}     onClick={()=>setSB("due")}/>
-          {sortBy==="manual"&&<Pill label="직접정렬 중" active={true} onClick={()=>{}} accent="#6835c9"/>}
+          <Pill label="긴급순" active={sortBy==="urgency"&&catSort==="none"} onClick={()=>{setSB("urgency");setCatSort("none");setTitleSort("none");}}/>
+          <Pill label="별점순" active={sortBy==="stars"&&catSort==="none"}   onClick={()=>{setSB("stars");setCatSort("none");setTitleSort("none");}}/>
+          <Pill label="기한순" active={sortBy==="due"&&catSort==="none"}     onClick={()=>{setSB("due");setCatSort("none");setTitleSort("none");}}/>
+          {sortBy==="manual"&&catSort==="none"&&<Pill label="직접정렬 중" active={true} onClick={()=>{}} accent="#6835c9"/>}
         </>}
         <span style={{width:1,height:14,background:"#e0e0e0",margin:"0 2px",flexShrink:0}}/>
         <select value={filterCat} onChange={e=>setFC(e.target.value)}
@@ -346,8 +346,12 @@ export default function App() {
               <thead>
                 <tr style={{fontSize:11,color:"#aaa"}}>
                   {sortBy==="manual"&&<th style={{width:20,fontWeight:400}}/>}
-                  <th onClick={()=>setCatSort(p=>p==="asc"?"desc":"asc")} style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:120,cursor:"pointer",userSelect:"none"}}>카테고리 {catSort==="asc"?"↑":"↓"}</th>
-                  <th onClick={()=>setTitleSort(p=>p==="asc"?"desc":"asc")} style={{textAlign:"center",padding:"0 8px",fontWeight:400,cursor:"pointer",userSelect:"none"}}>업무 {titleSort==="asc"?"↑":"↓"}</th>
+                  <th onClick={()=>{setCatSort(p=>p==="none"||p==="desc"?"asc":"desc");setSB("cat");}} style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:120,cursor:"pointer",userSelect:"none"}}>
+                    카테고리 {catSort==="asc"?"↑":catSort==="desc"?"↓":"↕"}
+                  </th>
+                  <th onClick={()=>{setTitleSort(p=>p==="none"||p==="desc"?"asc":"desc");if(catSort==="none")setCatSort("asc");}} style={{textAlign:"left",padding:"0 8px",fontWeight:400,cursor:"pointer",userSelect:"none"}}>
+                    업무 {titleSort==="asc"?"↑":titleSort==="desc"?"↓":"↕"}
+                  </th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:70}}>중요도</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>상태</th>
                   <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>기한</th>
@@ -362,13 +366,13 @@ export default function App() {
                       style={{cursor:"pointer",background:bg,borderLeft:bl,borderRadius:10,transition:"background 0.15s",userSelect:"none"}}>
                       {sortBy==="manual"&&<td style={{padding:"8px 4px 8px 8px",borderRadius:"10px 0 0 10px",color:"#ccc",fontSize:13,cursor:"grab"}}>☰</td>}
                       <td style={{padding:"8px",borderRadius:sortBy==="manual"?"0":"10px 0 0 10px",fontSize:12,color:"#7a7a7a",textAlign:"center",whiteSpace:"nowrap",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis"}}>{t.cat||"기타"}</td>
-                      <td style={{padding:"8px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none",textAlign:"center"}}>
+                      <td style={{padding:"8px",fontSize:13,fontWeight:t.status==="done"?400:500,color:t.status==="done"?"#aaa":"#1d1d1f",textDecoration:t.status==="done"?"line-through":"none",textAlign:"left"}}>
                         <div>{t.title}
                         {t.waiting_for&&<span style={{fontSize:10,color:"#bf5a00",marginLeft:6,background:"#fff3e0",padding:"1px 5px",borderRadius:4}}>⏳{t.waiting_for}</span>}
                         {(t.checklist||[]).length>0&&<span style={{fontSize:10,color:"#aaa",marginLeft:4}}>[{(t.checklist||[]).filter(x=>x.done).length}/{(t.checklist||[]).length}]</span>}
                         {t.archived&&<span style={{fontSize:10,color:"#1a7f37",marginLeft:4}}>📦</span>}
                         </div>
-                        {t.memo&&<div style={{fontSize:11,color:"#aaa",marginTop:2}}>{t.memo.length>20?t.memo.slice(0,20)+"…":t.memo}</div>}
+                        {t.memo&&<div style={{fontSize:11,color:"#aaa",marginTop:2,textAlign:"left"}}>{t.memo.length>20?t.memo.slice(0,20)+"…":t.memo}</div>}
                       </td>
                       <td style={{padding:"8px",textAlign:"center"}}><Stars v={t.stars}/></td>
                       <td style={{padding:"8px 4px",textAlign:"center"}}><StatusBadge s={t.status}/></td>
