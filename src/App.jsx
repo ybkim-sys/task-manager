@@ -115,7 +115,7 @@ export default function App() {
   const [modal,           setModal]           = useState(null);
   const [cleanupDays,     setCD]              = useState(30);
   const [archSearch,      setAS]              = useState("");
-  const [newT,            setNewT]            = useState({title:"",due:0"",stars:3,status:"todo",memo:"",waiting_for:"",cat:"기타"});
+  const [newT,            setNewT]            = useState({title:"",due:"",stars:3,status:"todo",memo:"",waiting_for:"",cat:"기타"});
 
   const [memos,        setMemos]        = useState([]);
   const [memoInput,    setMemoInput]    = useState("");
@@ -151,13 +151,10 @@ export default function App() {
         setOrder(data.map(t=>t.id));
       }
     });
-    api.getCategories().then(data=>{
-      if(Array.isArray(data)&&data.length>0) setCats(data.map(c=>c.name));
     });api.getCategories().then(data=>{
       if(Array.isArray(data)&&data.length>0) setCats(data.map(c=>c.name));
     });
     api.getMemos().then(data=>{ if(Array.isArray(data)) setMemos(data); });  // ← 여기 추가
-  },[user]);
   },[user]);
 
   if (!authChecked) return (
