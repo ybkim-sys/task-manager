@@ -366,9 +366,9 @@ export default function App() {
                   <th onClick={()=>{setTitleSort(p=>p==="none"||p==="desc"?"asc":"desc");if(catSort==="none")setCatSort("asc");}} style={{textAlign:"left",padding:"0 8px",fontWeight:400,cursor:"pointer",userSelect:"none"}}>
                     업무 {titleSort==="asc"?"↑":titleSort==="desc"?"↓":"↕"}
                   </th>
-                  <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:70}}>중요도</th>
-                  <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>상태</th>
-                  <th style={{textAlign:"center",padding:"0 8px",fontWeight:400,width:90}}>기한</th>
+                  <th style={{textAlign:"center",padding:"0 4px",fontWeight:400,width:35}}>중요도</th>
+                  <th style={{textAlign:"center",padding:"0 4px",fontWeight:400,width:45}}>상태</th>
+                  <th style={{textAlign:"center",padding:"0 4px",fontWeight:400,width:45}}>기한</th>
                 </tr>
               </thead>
               <tbody>
@@ -386,7 +386,7 @@ export default function App() {
                         {(t.checklist||[]).length>0&&<span style={{fontSize:10,color:"#aaa",marginLeft:4}}>[{(t.checklist||[]).filter(x=>x.done).length}/{(t.checklist||[]).length}]</span>}
                         {t.archived&&<span style={{fontSize:10,color:"#1a7f37",marginLeft:4}}>📦</span>}
                         </div>
-                        {t.memo&&<div style={{fontSize:11,color:"#aaa",marginTop:2,textAlign:"left"}}>{t.memo.length>20?t.memo.slice(0,20)+"…":t.memo}</div>}
+                        {t.memo&&<div style={{fontSize:11,color:"#aaa",marginTop:1,textAlign:"left"}}>{t.memo.length>20?t.memo.slice(0,20)+"…":t.memo}</div>}
                       </td>
                       <td style={{padding:"8px",textAlign:"center"}}><Stars v={t.stars}/></td>
                       <td style={{padding:"8px 4px",textAlign:"center"}}><StatusBadge s={t.status}/></td>
@@ -480,7 +480,7 @@ export default function App() {
               <div key={m.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"6px 10px",background:"#fffde7",borderRadius:8,border:"0.5px solid #fff176"}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,color:"#1d1d1f",lineHeight:1.5}}>{m.content}</div>
-                  <div style={{fontSize:10,color:"#aaa",marginTop:2}}>{m.created_at}</div>
+                  <div style={{fontSize:10,color:"#aaa",marginTop:1}}>{m.created_at}</div>
                 </div>
                 <button onClick={()=>deleteMemo(m.id)} style={{fontSize:14,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>×</button>
               </div>
