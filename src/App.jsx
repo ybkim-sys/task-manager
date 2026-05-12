@@ -252,8 +252,13 @@ export default function App() {
     setTasks(p => p.map(t => t.cat===old ? {...t,cat:v} : t));
     setCatEditIdx(null);
     api.getCategories().then(data=>{
-      const cat = data.find(c=>c.name===old);
+      const cat = data.find(c=>c.name===old);  // 수정 전 이름으로 찾기
       if(cat) api.updateCategory(cat.id, v);
+      else {
+        // id를 못 찾으면 sort_order로 매칭
+        const byOrder = data[i];
+        if(byOrder) api.updateCategory(byOrder.id, v);
+      }
     });
   };
   const catRemove = i => {
